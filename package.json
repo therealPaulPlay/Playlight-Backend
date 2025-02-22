@@ -1,7 +1,7 @@
 {
-  "name": "openreportbackend",
+  "name": "playlight-backend",
   "version": "1.0.0",
-  "description": "Backend for OpenReport",
+  "description": "Backend for Playlight",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,21 +12,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/therealPaulPlay/OpenReportBackend.git"
+    "url": "git+https://github.com/therealPaulPlay/Playlight-Backend.git"
   },
   "keywords": [
-    "Moderation",
-    "User",
-    "report",
-    "Reporting",
-    "tool"
+    "Playlight"
   ],
   "author": "PaulPlay",
   "license": "MIT + Commons Clause",
   "bugs": {
-    "url": "https://github.com/therealPaulPlay/OpenReportBackend/issues"
+    "url": "https://github.com/therealPaulPlay/Playlight-Backend./issues"
   },
-  "homepage": "https://github.com/therealPaulPlay/OpenReportBackend#readme",
+  "homepage": "https://github.com/therealPaulPlay/Playlight-Backend.#readme",
   "dependencies": {
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
@@ -41,7 +37,6 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.16",
     "request-ip": "^3.3.0",
-    "stripe": "^17.5.0",
     "uuid": "^11.0.3",
     "xss-clean": "^0.1.4"
   },
