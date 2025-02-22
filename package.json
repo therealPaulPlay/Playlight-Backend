@@ -1,0 +1,51 @@
+{
+  "name": "openreportbackend",
+  "version": "1.0.0",
+  "description": "Backend for OpenReport",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:migrate": "drizzle-kit migrate dev",
+    "db:setup": "npm run drizzle:generate && npm run drizzle:migrate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/therealPaulPlay/OpenReportBackend.git"
+  },
+  "keywords": [
+    "Moderation",
+    "User",
+    "report",
+    "Reporting",
+    "tool"
+  ],
+  "author": "PaulPlay",
+  "license": "MIT + Commons Clause",
+  "bugs": {
+    "url": "https://github.com/therealPaulPlay/OpenReportBackend/issues"
+  },
+  "homepage": "https://github.com/therealPaulPlay/OpenReportBackend#readme",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.39.3",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.12.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "request-ip": "^3.3.0",
+    "stripe": "^17.5.0",
+    "uuid": "^11.0.3",
+    "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.4"
+  }
+}
