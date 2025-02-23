@@ -3,10 +3,16 @@ const bodyParser = require('body-parser');
 const requestIp = require('request-ip');
 const cors = require('cors');
 const xss = require('xss-clean');
+const { createRouteHandler } = require("uploadthing/express");
 require('dotenv').config(); // Load environment variables
 
 // Router Imports
 const accountRouter = require("./JS/accountRouter.js");
+const adminRouter = require("./JS/adminRouter.js");
+const gameRouter = require("./JS/gameRouter.js");
+const platformRouter = require("./JS/platformRouter.js");
+const contactRouter = require("./JS/contactRouter.js");
+const { uploadRouter } = require("./JS/uploadRouter.js");
 
 // Function imports
 const { connectDB } = require("./JS/connectDB.js");
@@ -16,12 +22,21 @@ const app = express();
 // CORS configuration ------------------------------------------------------------
 app.use(cors({
     origin: (origin, callback) => {
+        // Public platform endpoints always allow any origin
+        if (origin && origin.includes('/platform/')) {
+            callback(null, true);
+            return;
+        }
+
+        // Other routes use the configured CORS origins
         const corsOrigins = process.env.CORS_ORIGIN.split(',').map(o =>
             /^\/.*\/$/.test(o) ? new RegExp(o.slice(1, -1)) : o
         );
 
-        if (!origin || corsOrigins.some(pattern => typeof pattern === 'string' ? pattern === origin : pattern.test(origin))) {
-            callback(null, true); // Allow requests without an origin (e.g., webhooks), otherwise check if it is matching
+        if (!origin || corsOrigins.some(pattern =>
+            typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
+        )) {
+            callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));
         }
@@ -43,7 +58,17 @@ app.use(xss());
 connectDB();
 
 // Routers
-app.use("/account", accountRouter)
+app.use("/account", accountRouter);
+app.use("/admin", adminRouter);
+app.use("/game", gameRouter);
+app.use("/contact", contactRouter);
+app.use("/platform", platformRouter);
+app.use(
+    "/uploads/uploadthing",
+    createRouteHandler({
+        router: uploadRouter,
+    }),
+);
 
 // Health check
 app.get('/health', (req, res) => {

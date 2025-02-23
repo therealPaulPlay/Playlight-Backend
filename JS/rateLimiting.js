@@ -21,4 +21,18 @@ const standardLimiter = rateLimit({
     message: { error: 'You are sending too many requests.' }
 });
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter };
+const heavyLimiter = rateLimit({
+    windowMs: 10 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 1,
+    message: { error: 'You are sending too many requests.' }
+});
+
+const superHeavyLimiter = rateLimit({
+    windowMs: 30 * 60 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 2,
+    message: { error: 'You are sending too many requests.' }
+});
+
+module.exports = { loginLimiter, registerLimiter, standardLimiter, heavyLimiter, superHeavyLimiter };

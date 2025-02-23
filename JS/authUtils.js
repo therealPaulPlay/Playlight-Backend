@@ -73,7 +73,7 @@ function authenticateTokenWithId(req, res, next) {
                 return res.status(403).json({ status: 403, error: "User ID from access token does not match requested user id." });
             }
 
-            next();
+            next?.();
         });
     } else {
         return res.status(401).json({ status: 401, error: "No authentication token in request. Try signing out and in again." });

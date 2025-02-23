@@ -8,7 +8,7 @@ const { getDB } = require("./connectDB.js");
 const { sendMail } = require('./sendEmails.js');
 
 // Import the schema and the equality helper
-const { users } = require('./schema');
+const { users, whitelist } = require('./schema');
 const { eq } = require('drizzle-orm');
 
 // Get user details
@@ -52,6 +52,12 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
     }
 
     try {
+        // Check whitelist
+        const whitelisted = await db.select().from(whitelist).where(eq(whitelist.email, email)).limit(1);
+        if (whitelisted.length === 0) {
+            return res.status(403).json({ error: 'Email not in whitelist. Registration is by invitation only.' });
+        }
+
         // Check if email already exists
         const existingUsers = await db.select().from(users).where(eq(users.email, email)).limit(1);
         if (existingUsers.length > 0) {
@@ -62,7 +68,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
         const hashedPassword = await getEncodedPassword(password);
         const now = new Date();
 
-        // Insert new user into the database
+        // Insert new user
         await db.insert(users).values({
             user_name: userName,
             email,
