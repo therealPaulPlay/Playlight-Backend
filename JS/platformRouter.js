@@ -68,7 +68,7 @@ platformRouter.get('/suggestions/:category', standardLimiter, async (req, res) =
         });
     } catch (error) {
         console.error('Error fetching game suggestions:', error);
-        res.status(500).json({ error: 'Failed to fetch game suggestions' });
+        res.status(500).json({ error: 'Failed to fetch game suggestions.' });
     }
 });
 
@@ -91,13 +91,13 @@ platformRouter.get('/game-by-domain/:domain', heavyLimiter, async (req, res) => 
             .limit(1);
 
         if (gameDetails.length === 0) {
-            return res.status(404).json({ error: 'Game not found for this domain' });
+            return res.status(404).json({ error: 'Game not found for this domain.' });
         }
 
         res.json(gameDetails[0]);
     } catch (error) {
         console.error('Error fetching game by domain:', error);
-        res.status(500).json({ error: 'Failed to fetch game details' });
+        res.status(500).json({ error: 'Failed to fetch game details.' });
     }
 });
 
@@ -115,7 +115,7 @@ platformRouter.get('/categories', standardLimiter, async (req, res) => {
         res.json(categories.map(c => c.category));
     } catch (error) {
         console.error('Error fetching categories:', error);
-        res.status(500).json({ error: 'Failed to fetch categories' });
+        res.status(500).json({ error: 'Failed to fetch categories.' });
     }
 });
 
@@ -125,7 +125,7 @@ platformRouter.post('/event/open', heavyLimiter, async (req, res) => {
     const { domain } = req.body;
 
     if (!domain) {
-        return res.status(400).json({ error: 'Domain is required' });
+        return res.status(400).json({ error: 'Domain is required.' });
     }
 
     try {
@@ -137,7 +137,7 @@ platformRouter.post('/event/open', heavyLimiter, async (req, res) => {
             .limit(1);
 
         if (game.length === 0) {
-            return res.status(404).json({ error: 'Game not found' });
+            return res.status(404).json({ error: 'Game not found.' });
         }
 
         const today = new Date();
@@ -176,7 +176,7 @@ platformRouter.post('/event/open', heavyLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error recording open event:', error);
-        res.status(500).json({ error: 'Failed to record open event' });
+        res.status(500).json({ error: 'Failed to record open event.' });
     }
 });
 
@@ -186,7 +186,7 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
     const { gameId, sourceDomain } = req.body;
 
     if (!gameId || !sourceDomain) {
-        return res.status(400).json({ error: 'Game ID and source domain are required' });
+        return res.status(400).json({ error: 'Game ID and source domain are required.' });
     }
 
     try {
@@ -204,7 +204,7 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
             .limit(1);
 
         if (sourceGame.length === 0 || targetGame.length === 0) {
-            return res.status(404).json({ error: 'Invalid game reference' });
+            return res.status(404).json({ error: 'Invalid game reference.' });
         }
 
         const today = new Date();
@@ -243,7 +243,7 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error recording click event:', error);
-        res.status(500).json({ error: 'Failed to record click event' });
+        res.status(500).json({ error: 'Failed to record click event.' });
     }
 });
 

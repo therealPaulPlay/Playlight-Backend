@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "drizzle:generate": "drizzle-kit generate",
-    "drizzle:migrate": "drizzle-kit migrate dev",
+    "drizzle:migrate": "drizzle-kit migrate",
     "db:setup": "npm run drizzle:generate && npm run drizzle:migrate"
   },
   "repository": {
@@ -18,7 +18,7 @@
     "Playlight"
   ],
   "author": "PaulPlay",
-  "license": "MIT + Commons Clause",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/therealPaulPlay/Playlight-Backend./issues"
   },

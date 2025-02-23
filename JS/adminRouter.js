@@ -13,12 +13,12 @@ const isAdmin = async (req, res, next) => {
     try {
         const user = await db.select().from(users).where(eq(users.id, req.body?.id)).limit(1);
         if (!user[0]?.is_admin) {
-            return res.status(403).json({ error: 'Admin access required' });
+            return res.status(403).json({ error: 'Admin access required.' });
         }
         next();
     } catch (error) {
         console.error('Error checking admin status:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error.' });
     }
 };
 
@@ -28,14 +28,14 @@ adminRouter.post('/whitelist', standardLimiter, authenticateTokenWithId, isAdmin
     const { email } = req.body;
 
     if (!email || !email.includes('@')) {
-        return res.status(400).json({ error: 'Valid email is required' });
+        return res.status(400).json({ error: 'Valid email is required.' });
     }
 
     try {
         // Check if email already exists in whitelist
         const existing = await db.select().from(whitelist).where(eq(whitelist.email, email.toLowerCase())).limit(1);
         if (existing.length > 0) {
-            return res.status(409).json({ error: 'Email already in whitelist' });
+            return res.status(409).json({ error: 'Email already in whitelist.' });
         }
 
         // Add to whitelist
@@ -44,10 +44,10 @@ adminRouter.post('/whitelist', standardLimiter, authenticateTokenWithId, isAdmin
             created_at: new Date()
         });
 
-        res.status(201).json({ message: 'Email added to whitelist' });
+        res.status(201).json({ message: 'Email added to whitelist.' });
     } catch (error) {
         console.error('Error adding to whitelist:', error);
-        res.status(500).json({ error: 'Failed to add email to whitelist' });
+        res.status(500).json({ error: 'Failed to add email to whitelist.' });
     }
 });
 
@@ -58,10 +58,10 @@ adminRouter.delete('/whitelist/:email', standardLimiter, authenticateTokenWithId
 
     try {
         await db.delete(whitelist).where(eq(whitelist.email, email.toLowerCase()));
-        res.json({ message: 'Email removed from whitelist' });
+        res.json({ message: 'Email removed from whitelist.' });
     } catch (error) {
         console.error('Error removing from whitelist:', error);
-        res.status(500).json({ error: 'Failed to remove email from whitelist' });
+        res.status(500).json({ error: 'Failed to remove email from whitelist.' });
     }
 });
 
@@ -73,7 +73,7 @@ adminRouter.put('/all-whitelist', standardLimiter, authenticateTokenWithId, isAd
         res.json(whitelistedEmails);
     } catch (error) {
         console.error('Error fetching whitelist:', error);
-        res.status(500).json({ error: 'Failed to fetch whitelist' });
+        res.status(500).json({ error: 'Failed to fetch whitelist.' });
     }
 });
 

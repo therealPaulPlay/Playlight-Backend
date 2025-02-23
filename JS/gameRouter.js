@@ -67,28 +67,40 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
 // Create game
 gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id: ownerId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl } = req.body;
+    const { id, ownerEmail, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl } = req.body;
 
     try {
         // Validate input
         if (!name || !category || !description || !domain) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ error: 'Missing required fields.' });
         }
 
         if (description.length > 500) {
-            return res.status(400).json({ error: 'Description too long' });
+            return res.status(400).json({ error: 'Description too long.' });
+        }
+
+        // Only allow admins to add games
+        const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
+        if (!user[0]?.is_admin) {
+            return res.status(403).json({ error: 'Admin access required.' });
+        }
+
+        // Get id of app owner
+        const owner = await db.select().from(users).where(eq(users.email, ownerEmail)).limit(1);
+        if (!owner[0]) {
+            return res.status(403).json({ error: 'Owner not found.' });
         }
 
         // Check domain uniqueness
         const existingGame = await db.select().from(games).where(eq(games.domain, domain)).limit(1);
         if (existingGame.length > 0) {
-            return res.status(409).json({ error: 'Domain already registered' });
+            return res.status(409).json({ error: 'Domain already registered.' });
         }
 
         // Insert game
         const result = await db.insert(games).values({
             name,
-            owner_id: ownerId,
+            owner_id: owner.id,
             category,
             description,
             domain,
@@ -101,7 +113,7 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
         res.status(201).json({ message: 'Game created successfully', id: result.insertId });
     } catch (error) {
         console.error('Error creating game:', error);
-        res.status(500).json({ error: 'Failed to create game' });
+        res.status(500).json({ error: 'Failed to create game.' });
     }
 });
 
@@ -117,11 +129,11 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
         if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found' });
+            return res.status(404).json({ error: 'Game not found.' });
         }
 
         if (!user[0].is_admin && game[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'Unauthorized.' });
         }
 
         // Update game
@@ -137,10 +149,10 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
             })
             .where(eq(games.id, gameId));
 
-        res.json({ message: 'Game updated successfully' });
+        res.json({ message: 'Game updated successfully.' });
     } catch (error) {
         console.error('Error updating game:', error);
-        res.status(500).json({ error: 'Failed to update game' });
+        res.status(500).json({ error: 'Failed to update game.' });
     }
 });
 
@@ -156,27 +168,27 @@ gameRouter.delete('/:id', standardLimiter, authenticateTokenWithId, async (req, 
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
         if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found' });
+            return res.status(404).json({ error: 'Game not found.' });
         }
 
         if (!user[0].is_admin && game[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'Unauthorized.' });
         }
 
         // Verify password
         const isValidPassword = await isPasswordValid(password, user[0].password);
         if (!isValidPassword) {
-            return res.status(403).json({ error: 'Invalid password' });
+            return res.status(403).json({ error: 'Invalid password.' });
         }
 
         // Delete game and its statistics
         await db.delete(statistics).where(eq(statistics.game_id, gameId));
         await db.delete(games).where(eq(games.id, gameId));
 
-        res.json({ message: 'Game deleted successfully' });
+        res.json({ message: 'Game deleted successfully.' });
     } catch (error) {
         console.error('Error deleting game:', error);
-        res.status(500).json({ error: 'Failed to delete game' });
+        res.status(500).json({ error: 'Failed to delete game.' });
     }
 });
 
@@ -192,11 +204,11 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
         if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found' });
+            return res.status(404).json({ error: 'Game not found.' });
         }
 
         if (!user[0].is_admin && game[0].owner_id !== userId) {
-            return res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'Unauthorized.' });
         }
 
         const startDate = new Date();
@@ -219,7 +231,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         res.json(stats);
     } catch (error) {
         console.error('Error fetching statistics:', error);
-        res.status(500).json({ error: 'Failed to fetch statistics' });
+        res.status(500).json({ error: 'Failed to fetch statistics.' });
     }
 });
 
