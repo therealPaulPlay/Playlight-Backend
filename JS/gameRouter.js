@@ -4,7 +4,7 @@ const { standardLimiter, heavyLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId, isPasswordValid } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics, users } = require('./schema');
-const { eq, and, gte, desc, sql } = require('drizzle-orm');
+const { eq, and, gte, desc, or, like } = require('drizzle-orm');
 
 // Fetch games with pagination and search (id is the user id here)
 gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -28,12 +28,8 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
                 )
             );
         }
-        if (category) {
-            conditions.push(eq(games.category, category));
-        }
-        if (!user[0].is_admin) {
-            conditions.push(eq(games.owner_id, req.params.id)); // Non-admin users can only see their own games
-        }
+        if (category) conditions.push(eq(games.category, category));
+        if (!user[0].is_admin) conditions.push(eq(games.owner_id, req.params.id)); // Non-admin users can only see their own games
 
         // Execute query with conditions
         const gamesResult = await db
