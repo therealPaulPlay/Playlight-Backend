@@ -12,7 +12,7 @@ const adminRouter = require("./JS/adminRouter.js");
 const gameRouter = require("./JS/gameRouter.js");
 const platformRouter = require("./JS/platformRouter.js");
 const contactRouter = require("./JS/contactRouter.js");
-const { uploadRouter } = require("./JS/uploadRouter.js");
+const { uploadRouter, utapiRouter } = require("./JS/uploadRouter.js");
 
 // Function imports
 const { connectDB } = require("./JS/connectDB.js");
@@ -57,6 +57,7 @@ app.use("/admin", adminRouter);
 app.use("/game", gameRouter);
 app.use("/contact", contactRouter);
 app.use("/platform", platformRouter);
+app.use("/uploads/utapi", utapiRouter);
 app.use(
     "/uploads/uploadthing",
     createRouteHandler({

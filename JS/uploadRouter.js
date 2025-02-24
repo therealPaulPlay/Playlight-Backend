@@ -1,9 +1,15 @@
 const { createUploadthing, UploadThingError } = require("uploadthing/express");
 const jwt = require("jsonwebtoken");
-const sharp = require("sharp");
-const { heavyLimiter } = require("./rateLimiting.js");
+const { UTApi } = require("uploadthing/server");
+const { heavyLimiter, standardLimiter } = require("./rateLimiting.js");
+const express = require('express');
+const { authenticateTokenWithId } = require("./authUtils.js");
+const utapiRouter = express.Router();
 
 const f = createUploadthing();
+
+// Initialize UTApi - this must be done on the server side
+const utapi = new UTApi();
 
 // For debugging: if no token is provided, use a fallback user ID.
 async function verifyAuth(req) {
@@ -68,4 +74,27 @@ const uploadRouter = {
         }),
 };
 
-module.exports = { uploadRouter };
+// Delete file endpoint
+utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    try {
+        const { fileKey } = req.body;
+
+        if (!fileKey) {
+            return res.status(400).json({ error: "File key is required" });
+        }
+
+        // Delete the file using UTApi
+        await utapi.deleteFiles(fileKey);
+
+        // Return success response
+        return res.json({ success: true, message: "File deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting file:", error);
+        return res.status(500).json({
+            success: false,
+            error: error.message || "Failed to delete file"
+        });
+    }
+});
+
+module.exports = { uploadRouter, utapiRouter };
