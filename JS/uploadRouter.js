@@ -49,6 +49,7 @@ const uploadRouter = {
     coverImageUploader: f(["image/jpeg"], { image: { maxFileSize: "250KB", maxFileCount: 1 } })
         .middleware(async ({ req, files, res }) => {
             await applyLimiter(req, res);
+            const userId = await verifyAuth(req);
             return { userId };
         })
         .onUploadComplete((data) => {
