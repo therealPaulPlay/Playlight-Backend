@@ -32,7 +32,7 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
             conditions.push(eq(games.category, category));
         }
         if (!user[0].is_admin) {
-            conditions.push(eq(games.owner_id, req.user.id)); // Non-admin users can only see their own games
+            conditions.push(eq(games.owner_id, req.params.id)); // Non-admin users can only see their own games
         }
 
         // Execute query with conditions
@@ -123,7 +123,7 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
             return res.status(404).json({ error: 'Game not found.' });
         }
 
-        if (!user[0].is_admin && game[0].owner_id !== userId) {
+        if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
 
@@ -168,7 +168,7 @@ gameRouter.delete('/:id', standardLimiter, authenticateTokenWithId, async (req, 
             return res.status(404).json({ error: 'Game not found.' });
         }
 
-        if (!user[0].is_admin && game[0].owner_id !== userId) {
+        if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
 
@@ -204,7 +204,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
             return res.status(404).json({ error: 'Game not found.' });
         }
 
-        if (!user[0].is_admin && game[0].owner_id !== userId) {
+        if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
 
