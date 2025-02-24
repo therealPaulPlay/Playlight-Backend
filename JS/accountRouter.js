@@ -189,7 +189,7 @@ accountRouter.post('/reset-password-request', standardLimiter, async (req, res) 
         const resetToken = jwt.sign({ email, id: user.id }, process.env.JWT_RESET_SECRET, { expiresIn: '1h' });
 
         // Send email with the reset token
-        const resetUrl = `https://openreport.dev/login?token=${resetToken}`;
+        const resetUrl = `${process.env.SITE_DOMAIN}/login?token=${resetToken}`;
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: email,

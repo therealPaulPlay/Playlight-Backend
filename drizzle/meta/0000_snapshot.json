@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "9beb18c4-d838-447a-96de-272b3ccafc19",
+  "id": "d5ff41fd-dfa0-4339-b98f-2e0ffb8bc837",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "users": {
@@ -42,21 +42,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": false
-        },
-        "is_verified": {
-          "name": "is_verified",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "verification_token": {
-          "name": "verification_token",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -276,7 +261,7 @@
         },
         "game_id": {
           "name": "game_id",
-          "type": "int",
+          "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -329,7 +314,21 @@
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "statistics_game_id_games_id_fk": {
+          "name": "statistics_game_id_games_id_fk",
+          "tableFrom": "statistics",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "statistics_id": {
           "name": "statistics_id",

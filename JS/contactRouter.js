@@ -36,7 +36,7 @@ Message:
 ${message}
             `,
             html: `
-                <h2>Contact Form Submission Details</h2>
+                <h2>Contact details</h2>
                 <p><strong>From:</strong> ${email}</p>
                 <p><strong>Website:</strong> ${website}</p>
                 <h3>Message:</h3>

@@ -22,7 +22,7 @@ const standardLimiter = rateLimit({
 });
 
 const heavyLimiter = rateLimit({
-    windowMs: 10 * 1000,
+    windowMs: 1000,
     keyGenerator: (req) => req.clientIp,
     max: 1,
     message: { error: 'You are sending too many requests.' }

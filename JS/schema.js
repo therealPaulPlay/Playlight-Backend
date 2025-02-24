@@ -1,5 +1,5 @@
 // schema.js
-const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex } = require('drizzle-orm/mysql-core');
+const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint } = require('drizzle-orm/mysql-core');
 
 const users = mysqlTable('users', {
     id: serial('id').primaryKey(),
@@ -42,14 +42,15 @@ const games = mysqlTable('games', {
 
 const statistics = mysqlTable('statistics', {
     id: serial('id').primaryKey(),
-    game_id: int('game_id').notNull(),
+    game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp('date').notNull(),
     clicks: int('clicks').default(0).notNull(),
     playlight_opens: int('playlight_opens').default(0).notNull(),
 }, (table) => [
     index('game_id_idx').on(table.game_id),
     index('date_idx').on(table.date),
-    index('game_id_date_idx').on(table.game_id, table.date)
+    index('game_id_date_idx').on(table.game_id, table.date),
+
 ]);
 
 module.exports = { users, whitelist, games, statistics };

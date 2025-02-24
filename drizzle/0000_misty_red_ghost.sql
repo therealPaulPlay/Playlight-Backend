@@ -4,8 +4,6 @@ CREATE TABLE `users` (
 	`email` varchar(100) NOT NULL,
 	`password` varchar(255) NOT NULL,
 	`is_admin` boolean NOT NULL DEFAULT false,
-	`is_verified` boolean NOT NULL DEFAULT false,
-	`verification_token` varchar(255),
 	`created_at` timestamp NOT NULL,
 	CONSTRAINT `users_id` PRIMARY KEY(`id`),
 	CONSTRAINT `email_idx` UNIQUE(`email`)
@@ -37,13 +35,14 @@ CREATE TABLE `games` (
 --> statement-breakpoint
 CREATE TABLE `statistics` (
 	`id` serial AUTO_INCREMENT NOT NULL,
-	`game_id` int NOT NULL,
+	`game_id` bigint unsigned NOT NULL,
 	`date` timestamp NOT NULL,
 	`clicks` int NOT NULL DEFAULT 0,
 	`playlight_opens` int NOT NULL DEFAULT 0,
 	CONSTRAINT `statistics_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+ALTER TABLE `statistics` ADD CONSTRAINT `statistics_game_id_games_id_fk` FOREIGN KEY (`game_id`) REFERENCES `games`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `owner_id_idx` ON `games` (`owner_id`);--> statement-breakpoint
 CREATE INDEX `category_idx` ON `games` (`category`);--> statement-breakpoint
 CREATE INDEX `name_idx` ON `games` (`name`);--> statement-breakpoint

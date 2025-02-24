@@ -1,7 +1,7 @@
 const express = require('express');
 const gameRouter = express.Router();
 const { standardLimiter, heavyLimiter } = require("./rateLimiting.js");
-const { authenticateTokenWithId } = require("./authUtils.js");
+const { authenticateTokenWithId, isPasswordValid } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics, users } = require('./schema');
 const { eq, and, gte, desc, sql } = require('drizzle-orm');
@@ -15,7 +15,7 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
 
     try {
         // Check if user is admin
-        const user = await db.select().from(users).where(eq(users.id, req.user.id)).limit(1);
+        const user = await db.select().from(users).where(eq(users.id, req.params.id)).limit(1);
 
         // Build query conditions
         let conditions = [];
@@ -37,18 +37,7 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
 
         // Execute query with conditions
         const gamesResult = await db
-            .select({
-                id: games.id,
-                name: games.name,
-                category: games.category,
-                domain: games.domain,
-                description: games.description,
-                logo_url: games.logo_url,
-                cover_image_url: games.cover_image_url,
-                cover_video_url: games.cover_video_url,
-                boost_factor: games.boost_factor,
-                created_at: games.created_at,
-            })
+            .select()
             .from(games)
             .where(conditions.length > 0 ? and(...conditions) : undefined)
             .limit(pageSize)
@@ -71,7 +60,7 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
 
     try {
         // Validate input
-        if (!name || !category || !description || !domain) {
+        if (!name || !category || !description || !domain || !logoUrl || !coverImageUrl || !coverVideoUrl) {
             return res.status(400).json({ error: 'Missing required fields.' });
         }
 
@@ -100,7 +89,7 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
         // Insert game
         const result = await db.insert(games).values({
             name,
-            owner_id: owner.id,
+            owner_id: owner[0].id,
             category,
             description,
             domain,
@@ -117,11 +106,13 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
     }
 });
 
-// Update game (Admin)
+// Update game
 gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
     const gameId = parseInt(req.params.id);
-    const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl } = req.body;
+    const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl, password } = req.body;
+
+    if (!password) return res.status(400).json({ error: "Password is missing." });
 
     try {
         // Check ownership or admin status
@@ -134,6 +125,12 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
 
         if (!user[0].is_admin && game[0].owner_id !== userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
+        }
+
+        // Verify password
+        const isValidPassword = await isPasswordValid(password, user[0].password);
+        if (!isValidPassword) {
+            return res.status(403).json({ error: 'Invalid password.' });
         }
 
         // Update game

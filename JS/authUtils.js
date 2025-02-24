@@ -16,6 +16,7 @@ async function getEncodedPassword(plainPassword) {
 // Check password against hash for the login
 async function isPasswordValid(plainPassword, hashedPassword) {
     try {
+        if (!plainPassword) throw new Error("No password provided!");
         const isValid = await bcrypt.compare(plainPassword, hashedPassword);
         return isValid;
     } catch (error) {

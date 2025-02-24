@@ -41,7 +41,7 @@ function applyLimiter(req, res) {
 
 const uploadRouter = {
     // Logo uploader: expects a JPEG image (max 100KB) with dimensions 500x500.
-    logoUploader: f(["image/jpeg"], { image: { maxFileSize: "100KB", maxFileCount: 1 } })
+    logoUploader: f(["image/jpeg"], { image: { maxFileSize: "100KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
         .middleware(async ({ req, files, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
@@ -52,7 +52,7 @@ const uploadRouter = {
         }),
 
     // Cover image uploader: expects a JPEG/PNG image (max 250KB) with dimensions 800x1200.
-    coverImageUploader: f(["image/jpeg"], { image: { maxFileSize: "250KB", maxFileCount: 1 } })
+    coverImageUploader: f(["image/jpeg"], { image: { maxFileSize: "250KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
         .middleware(async ({ req, files, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
@@ -63,7 +63,7 @@ const uploadRouter = {
         }),
 
     // Cover video uploader: expects a video file (max 3MB).
-    coverVideoUploader: f({ video: { maxFileSize: "3MB", maxFileCount: 1 } })
+    coverVideoUploader: f({ video: { maxFileSize: "3MB", maxFileCount: 1, allowedFileTypes: ["video/mp4"] } })
         .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
@@ -80,19 +80,19 @@ utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, asy
         const { fileKey } = req.body;
 
         if (!fileKey) {
-            return res.status(400).json({ error: "File key is required" });
+            return res.status(400).json({ error: "File key is required." });
         }
 
         // Delete the file using UTApi
         await utapi.deleteFiles(fileKey);
 
         // Return success response
-        return res.json({ success: true, message: "File deleted successfully" });
+        return res.json({ success: true, message: "File deleted successfully." });
     } catch (error) {
         console.error("Error deleting file:", error);
         return res.status(500).json({
             success: false,
-            error: error.message || "Failed to delete file"
+            error: error.message || "Failed to delete file."
         });
     }
 });
