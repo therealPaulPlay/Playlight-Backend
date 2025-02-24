@@ -1,23 +1,23 @@
 const express = require('express');
 const contactRouter = express.Router();
-const { superHeavyLimiter } = require("./rateLimiting.js");
+const { heavyLimiter } = require("./rateLimiting.js");
 const { sendMail } = require('./sendEmails.js');
 
 // Form submission endpoint
-contactRouter.post('/submit', superHeavyLimiter, async (req, res) => {
+contactRouter.post('/submit', heavyLimiter, async (req, res) => {
     const { email, website, message } = req.body;
 
     // Validate required fields
     if (!email || !website || !message) {
         return res.status(400).json({
-            error: 'Email, website, and message are required fields'
+            error: `Email, website, and message are required fields. Email: ${email}, Website: ${website}, Message: ${message}.`
         });
     }
 
     // Basic email format validation
     if (!email.includes('@') || !email.includes('.')) {
         return res.status(400).json({
-            error: 'Please provide a valid email address'
+            error: 'Please provide a valid email address.'
         });
     }
 
@@ -47,7 +47,7 @@ ${message}
         await sendMail(mailOptions);
 
         res.json({
-            message: 'Form submitted successfully'
+            message: 'Form submitted successfully!'
         });
 
     } catch (error) {

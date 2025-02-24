@@ -44,13 +44,7 @@ app.use(cors({
 }));
 
 // Middleware
-app.use((req, res, next) => {
-    if (req.originalUrl === '/subscription/webhook') {
-        next(); // Skip body-parser for Stripe Webhook
-    } else {
-        bodyParser.json()(req, res, next); // Use body-parser for all other routes
-    }
-});
+app.use(express.json()); // Parse the body as json for all routes
 app.use(requestIp.mw());
 app.use(xss());
 
