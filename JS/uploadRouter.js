@@ -4,6 +4,9 @@ const { UTApi } = require("uploadthing/server");
 const { heavyLimiter, standardLimiter } = require("./rateLimiting.js");
 const express = require('express');
 const { authenticateTokenWithId } = require("./authUtils.js");
+const { users, games } = require("./schema.js");
+const { getDB } = require("./connectDB.js");
+const { eq } = require("drizzle-orm");
 const utapiRouter = express.Router();
 
 const f = createUploadthing();
@@ -93,6 +96,86 @@ utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, asy
         return res.status(500).json({
             success: false,
             error: error.message || "Failed to delete file."
+        });
+    }
+});
+
+// File cleanup endpoint - removes unused files
+utapiRouter.post('/cleanup-files', heavyLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    try {
+        // Check if user is admin
+        const user = await db.select().from(users).where(eq(users.id, req.body?.id)).limit(1);
+        if (!user[0]?.is_admin) {
+            return res.status(403).json({ error: 'Admin access required.' });
+        }
+
+        // Step 1: Get all files from UploadThing
+        const allFiles = await utapi.listFiles();
+        if (!allFiles.files || allFiles.files.length === 0) {
+            return res.json({ message: 'No files found to clean up.', deletedCount: 0 });
+        }
+
+        // Step 2: Get all games to check for file usage
+        const allGames = await db.select({
+            logoUrl: games.logo_url,
+            coverImageUrl: games.cover_image_url,
+            coverVideoUrl: games.cover_video_url
+        }).from(games);
+
+        // Step 3: Create a set of all file keys used in games
+        // We need to extract the file key from the URL
+        const usedKeys = new Set();
+        allGames.forEach(game => {
+            // Extract the file key from the end of each URL
+            // URL format appears to be like: https://fo44pnkn0k.ufs.sh/f/6LboSMjaJMLA1K4Fq4vjIcBunLWxJmdtvMAG0Ql7yK5HUZCa
+            const extractKeyFromUrl = (url) => {
+                if (!url) return null;
+                const parts = url.split('/');
+                return parts[parts.length - 1]; // Get the last part after the final slash
+            };
+
+            if (game.logoUrl) {
+                const key = extractKeyFromUrl(game.logoUrl);
+                if (key) usedKeys.add(key);
+            }
+            if (game.coverImageUrl) {
+                const key = extractKeyFromUrl(game.coverImageUrl);
+                if (key) usedKeys.add(key);
+            }
+            if (game.coverVideoUrl) {
+                const key = extractKeyFromUrl(game.coverVideoUrl);
+                if (key) usedKeys.add(key);
+            }
+        });
+
+        // Step 4: Find files that aren't being used
+        const unusedFiles = allFiles.files.filter(file => !usedKeys.has(file.key));
+
+        if (unusedFiles.length === 0) {
+            return res.json({ message: 'No unused files found.', deletedCount: 0 });
+        }
+
+        // Step 5: Delete unused files
+        const fileKeysToDelete = unusedFiles.map(file => file.key);
+
+        if (fileKeysToDelete.length > 0) {
+            await utapi.deleteFiles(fileKeysToDelete);
+            console.log("Files deleted:", fileKeysToDelete);
+        }
+
+        // Return success response with deleted file count
+        return res.json({
+            success: true,
+            message: `Successfully deleted ${fileKeysToDelete.length} unused files.`,
+            deletedCount: fileKeysToDelete.length,
+            deletedFiles: unusedFiles.map(f => ({ key: f.key, name: f.name }))
+        });
+    } catch (error) {
+        console.error('Error cleaning up files:', error);
+        return res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to clean up files.'
         });
     }
 });
