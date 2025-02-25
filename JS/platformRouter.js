@@ -73,7 +73,7 @@ platformRouter.get('/suggestions/:category', standardLimiter, async (req, res) =
 });
 
 // Get game details by domain
-platformRouter.get('/game-by-domain/:domain', heavyLimiter, async (req, res) => {
+platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) => {
     const db = getDB();
     const { domain } = req.params;
 
