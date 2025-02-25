@@ -16,6 +16,7 @@ gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res
     try {
         // Check if user is admin
         const user = await db.select().from(users).where(eq(users.id, req.params.id)).limit(1);
+        if (!user[0]) return res.status(404).json({ error: "User not found." });
 
         // Build query conditions
         let conditions = [];
@@ -60,10 +61,6 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
             return res.status(400).json({ error: 'Missing required fields.' });
         }
 
-        if (description.length > 500) {
-            return res.status(400).json({ error: 'Description too long.' });
-        }
-
         // Only allow admins to add games
         const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
         if (!user[0]?.is_admin) {
@@ -72,15 +69,13 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
 
         // Get id of app owner
         const owner = await db.select().from(users).where(eq(users.email, ownerEmail)).limit(1);
-        if (!owner[0]) {
-            return res.status(403).json({ error: 'Owner not found.' });
-        }
+        if (!owner[0]) return res.status(403).json({ error: 'Owner not found.' });
 
         // Check domain uniqueness
         const existingGame = await db.select().from(games).where(eq(games.domain, domain)).limit(1);
-        if (existingGame.length > 0) {
-            return res.status(409).json({ error: 'Domain already registered.' });
-        }
+        if (existingGame.length > 0) return res.status(409).json({ error: 'Domain already registered.' });
+
+        if (description.length > 500) return res.status(400).json({ error: 'Description too long.' });
 
         // Insert game
         const result = await db.insert(games).values({
@@ -109,6 +104,7 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
     const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl, password } = req.body;
 
     if (!password) return res.status(400).json({ error: "Password is missing." });
+    if (description.length > 500) return res.status(400).json({ error: 'Description too long.' });
 
     try {
         // Check ownership or admin status
