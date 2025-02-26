@@ -137,7 +137,7 @@ platformRouter.post('/event/open', heavyLimiter, async (req, res) => {
             .limit(1);
 
         if (game.length === 0) {
-            return res.status(404).json({ error: 'Game not found.' });
+            return res.status(404).json({ error: 'Could not find game for this domain.' });
         }
 
         const today = new Date();
