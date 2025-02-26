@@ -7,7 +7,7 @@ const { games, statistics } = require('./schema.js');
 const { eq, and, gte, desc, sql } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
-platformRouter.get('/suggestions/:category', standardLimiter, async (req, res) => {
+platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
     const db = getDB();
     const { category } = req.params;
     const { page = 1 } = req.query;
@@ -19,12 +19,8 @@ platformRouter.get('/suggestions/:category', standardLimiter, async (req, res) =
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Complex ranking query that considers:
-        // - Click count (highest weight)
-        // - Playlight opens (medium weight)
-        // - Novelty (bonus for new games that decays over 30 days)
-        // - Boost factor (multiplier for potential promotional content)
-        const rankedGames = await db
+        // Build query
+        let query = db
             .select({
                 id: games.id,
                 name: games.name,
@@ -35,28 +31,32 @@ platformRouter.get('/suggestions/:category', standardLimiter, async (req, res) =
                 domain: games.domain,
                 created_at: games.created_at,
                 ranking_score: sql`
-                    (
-                        (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
-                        (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
-                        CASE 
-                            WHEN ${games.created_at} > ${thirtyDaysAgo} 
-                            THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
-                            ELSE 0 
-                        END
-                    ) * ${games.boost_factor}
-                `.as('ranking_score')
+            (
+              (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
+              (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+              CASE
+                WHEN ${games.created_at} > ${thirtyDaysAgo}
+                THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
+                ELSE 0
+              END
+            ) * ${games.boost_factor}
+          `.as('ranking_score')
             })
-            .from(games)
-            .where(eq(games.category, category))
+            .from(games);
+
+        // Apply category filter only if provided
+        if (category) query = query.where(eq(games.category, category));
+
+        // Complete the query with ordering and pagination
+        const rankedGames = await query
             .orderBy(desc(sql`ranking_score`))
             .limit(pageSize)
             .offset(offset);
 
-        // Get total count for pagination
-        const [{ count }] = await db
-            .select({ count: sql`COUNT(*)` })
-            .from(games)
-            .where(eq(games.category, category));
+        // Get total count for pagination, with or without category filter
+        let countQuery = db.select({ count: sql`COUNT(*)` }).from(games);
+        if (category) countQuery = countQuery.where(eq(games.category, category));
+        const [{ count }] = await countQuery;
 
         res.json({
             games: rankedGames,
