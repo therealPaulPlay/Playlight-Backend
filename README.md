@@ -1,4 +1,4 @@
-# Playlight-Backend
+# Playlight (Backend)
 Backend and algorithm for Playlight.
 
 ## Start
