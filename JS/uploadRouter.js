@@ -8,7 +8,6 @@ const { users, games } = require("./schema.js");
 const { getDB } = require("./connectDB.js");
 const { eq } = require("drizzle-orm");
 const utapiRouter = express.Router();
-require('dotenv').config();
 
 const f = createUploadthing();
 
