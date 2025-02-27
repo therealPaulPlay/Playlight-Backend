@@ -61,6 +61,7 @@ app.use("/uploads/utapi", utapiRouter);
 app.use(
     "/uploads/uploadthing",
     createRouteHandler({
+        token: process.env.UPLOADTHING_TOKEN,
         router: uploadRouter,
     }),
 );
