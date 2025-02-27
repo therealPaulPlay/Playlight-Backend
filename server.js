@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const requestIp = require('request-ip');
 const cors = require('cors');
 const xss = require('xss-clean');
@@ -62,9 +61,6 @@ app.use(
     "/uploads/uploadthing",
     createRouteHandler({
         router: uploadRouter,
-        config: {
-            token: process.env.UPLOADTHING_TOKEN
-        }
     }),
 );
 
