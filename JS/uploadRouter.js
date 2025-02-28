@@ -24,12 +24,12 @@ async function verifyAuth(req) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         if (!decoded || !decoded.userId) {
-            throw new UploadThingError("Authentication failed");
+            throw new UploadThingError("Authentication failed.");
         }
         return decoded.userId;
     } catch (err) {
         console.log("[verifyAuth] JWT error:", err);
-        throw new UploadThingError("Authentication failed");
+        throw new UploadThingError("Authentication failed due to error.");
     }
 }
 
@@ -42,12 +42,21 @@ function applyLimiter(req, res) {
     });
 }
 
+async function checkAdmin(id) {
+    const db = getDB();
+    const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!user[0]?.is_admin) {
+        throw new UploadThingError("Admin access not granted.");
+    }
+}
+
 const uploadRouter = {
     // Logo uploader: expects a JPEG image (max 100KB) with dimensions 500x500.
     logoUploader: f(["image/jpeg"], { image: { maxFileSize: "100KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
         .middleware(async ({ req, files, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
+            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -59,6 +68,7 @@ const uploadRouter = {
         .middleware(async ({ req, files, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
+            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -70,6 +80,7 @@ const uploadRouter = {
         .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
+            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -82,9 +93,8 @@ utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, asy
     try {
         const { fileKey } = req.body;
 
-        if (!fileKey) {
-            return res.status(400).json({ error: "File key is required." });
-        }
+        if (!fileKey) return res.status(400).json({ error: "File key is required." });
+        await checkAdmin(req.body.id);
 
         // Delete the file using UTApi
         await utapi.deleteFiles(fileKey);
@@ -102,13 +112,9 @@ utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, asy
 
 // File cleanup endpoint - removes unused files
 utapiRouter.post('/cleanup-files', heavyLimiter, authenticateTokenWithId, async (req, res) => {
-    const db = getDB();
     try {
-        // Check if user is admin
-        const user = await db.select().from(users).where(eq(users.id, req.body?.id)).limit(1);
-        if (!user[0]?.is_admin) {
-            return res.status(403).json({ error: 'Admin access required.' });
-        }
+        const db = getDB();
+        await checkAdmin(req.body?.id);
 
         // Step 1: Get all files from UploadThing
         const allFiles = await utapi.listFiles();
