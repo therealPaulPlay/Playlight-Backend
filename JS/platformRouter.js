@@ -4,7 +4,7 @@ const platformRouter = express.Router();
 const { heavyLimiter, standardLimiter } = require("./rateLimiting.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics } = require('./schema.js');
-const { eq, and, gte, desc, sql } = require('drizzle-orm');
+const { eq, and, gte, desc, sql, ne } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
@@ -19,7 +19,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // Build query
+        // Build query for the specified category (or all if no category specified)
         let query = db
             .select({
                 id: games.id,
@@ -30,6 +30,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
                 cover_video_url: games.cover_video_url,
                 domain: games.domain,
                 created_at: games.created_at,
+                category: games.category,
                 ranking_score: sql`
             (
               (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
@@ -48,18 +49,58 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
         if (category) query = query.where(eq(games.category, category));
 
         // Complete the query with ordering and pagination
-        const rankedGames = await query
+        const categoryGames = await query
             .orderBy(desc(sql`ranking_score`))
             .limit(pageSize)
             .offset(offset);
 
-        // Get total count for pagination, with or without category filter
+        // Get total count for pagination of the filtered category
         let countQuery = db.select({ count: sql`COUNT(*)` }).from(games);
         if (category) countQuery = countQuery.where(eq(games.category, category));
         const [{ count }] = await countQuery;
 
+        // If we don't have enough games in the category and a category was selected,
+        // fetch additional games from other categories to fill up to pageSize
+        let resultGames = categoryGames;
+
+        if (category && categoryGames.length < pageSize) {
+            // Get additional games from other categories
+            const additionalGamesNeeded = pageSize - categoryGames.length;
+
+            const otherCategoryGames = await db
+                .select({
+                    id: games.id,
+                    name: games.name,
+                    description: games.description,
+                    logo_url: games.logo_url,
+                    cover_image_url: games.cover_image_url,
+                    cover_video_url: games.cover_video_url,
+                    domain: games.domain,
+                    created_at: games.created_at,
+                    category: games.category,
+                    ranking_score: sql`
+              (
+                (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
+                (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+                CASE
+                  WHEN ${games.created_at} > ${thirtyDaysAgo}
+                  THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
+                  ELSE 0
+                END
+              ) * ${games.boost_factor}
+            `.as('ranking_score')
+                })
+                .from(games)
+                .where(ne(games.category, category))
+                .orderBy(desc(sql`ranking_score`))
+                .limit(additionalGamesNeeded);
+
+            // Combine the results
+            resultGames = [...categoryGames, ...otherCategoryGames];
+        }
+
         res.json({
-            games: rankedGames,
+            games: resultGames,
             pagination: {
                 currentPage: parseInt(page),
                 totalPages: Math.ceil(count / pageSize),
