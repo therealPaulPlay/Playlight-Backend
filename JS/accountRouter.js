@@ -40,18 +40,18 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Username, email, and password are required.' });
     }
 
-    userName = userName.trim();
-    email = email.trim().toLowerCase();
-
-    if (userName.length < 4 || email.length < 5) {
-        return res.status(400).json({ error: "Username or email are too short." });
-    }
-
-    if (userName.length > 50 || email.length > 100) {
-        return res.status(400).json({ error: "Username or email are too long." });
-    }
-
     try {
+        userName = userName.trim();
+        email = email.trim().toLowerCase();
+
+        if (userName.length < 4 || email.length < 5) {
+            return res.status(400).json({ error: "Username or email are too short." });
+        }
+
+        if (userName.length > 50 || email.length > 100) {
+            return res.status(400).json({ error: "Username or email are too long." });
+        }
+
         // Check whitelist
         const whitelisted = await db.select().from(whitelist).where(eq(whitelist.email, email)).limit(1);
         if (whitelisted.length === 0) {
