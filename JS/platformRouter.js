@@ -16,11 +16,9 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
     const offset = (pageNum - 1) * pageSize;
 
     try {
-        // Calculate novelty score based on age (higher for newer games, decays over time)
+        // Calculate novelty score SQL
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        // Build score calculation SQL
         const scoreCalculation = sql`
             ((SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
              (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
@@ -28,100 +26,33 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
              CASE WHEN ${games.created_at} > ${thirtyDaysAgo} THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75 ELSE 0 END) 
             * ${games.boost_factor}`;
 
-        let resultGames = [];
-        let usedAdditionalGames = false;
+        // Build base query
+        let query = db
+            .select({
+                id: games.id,
+                name: games.name,
+                description: games.description,
+                logo_url: games.logo_url,
+                cover_image_url: games.cover_image_url,
+                cover_video_url: games.cover_video_url,
+                domain: games.domain,
+                created_at: games.created_at,
+                category: games.category,
+                ranking_score: scoreCalculation.as('ranking_score')
+            })
+            .from(games);
 
-        // Step 1: Get primary category games if a category is specified
-        if (category) {
-            // Build query for primary category
-            let primaryQuery = db
-                .select({
-                    id: games.id,
-                    name: games.name,
-                    description: games.description,
-                    logo_url: games.logo_url,
-                    cover_image_url: games.cover_image_url,
-                    cover_video_url: games.cover_video_url,
-                    domain: games.domain,
-                    created_at: games.created_at,
-                    category: games.category,
-                    ranking_score: scoreCalculation.as('ranking_score')
-                })
-                .from(games)
-                .where(eq(games.category, category));
+        // Apply filters
+        if (category) query = query.where(eq(games.category, category));
+        if (without) query = query.where(ne(games.domain, without));
 
-            if (without) primaryQuery = primaryQuery.where(ne(games.domain, without)); // Apply domain filter if provided
+        // Execute query with pagination
+        const resultGames = await query
+            .orderBy(desc(sql`ranking_score`))
+            .limit(pageSize)
+            .offset(offset);
 
-            // Get all games from primary category
-            const primaryCategoryGames = await primaryQuery.orderBy(desc(sql`ranking_score`));
-
-            // Calculate how many primary games to include on this page
-            const primaryGamesForThisPage = primaryCategoryGames.slice(offset, offset + pageSize);
-            resultGames = primaryGamesForThisPage;
-
-            // If we need more games, set flag to get additional games
-            if (resultGames.length < pageSize) usedAdditionalGames = true;
-        }
-
-        // Step 2: Fill remaining slots with games from other categories
-        if (!category || usedAdditionalGames) {
-            const remainingSlots = pageSize - resultGames.length;
-
-            if (remainingSlots > 0) {
-                let otherCategoryOffset = 0;
-
-                // If category specified, offset for other games is calculated differently
-                if (category) {
-                    // Calculate how many "other category" games we've already shown in previous pages
-                    const totalPrimaryGames = await db
-                        .select({ count: sql`count(*)` })
-                        .from(games)
-                        .where(eq(games.category, category))
-                        .then(r => Number(r[0].count));
-
-                    // If we've shown all primary games, calculate offset for other games
-                    if (offset >= totalPrimaryGames) {
-                        otherCategoryOffset = offset - totalPrimaryGames;
-                    }
-                } else {
-                    otherCategoryOffset = offset; // If no category filter, use regular offset
-                }
-
-                // Build query for other categories
-                let otherQuery = db
-                    .select({
-                        id: games.id,
-                        name: games.name,
-                        description: games.description,
-                        logo_url: games.logo_url,
-                        cover_image_url: games.cover_image_url,
-                        cover_video_url: games.cover_video_url,
-                        domain: games.domain,
-                        created_at: games.created_at,
-                        category: games.category,
-                        ranking_score: scoreCalculation.as('ranking_score')
-                    })
-                    .from(games);
-
-                // Apply filters
-                if (category) otherQuery = otherQuery.where(ne(games.category, category));
-                if (without) otherQuery = otherQuery.where(ne(games.domain, without));
-
-                // Get other category games with correct pagination
-                const otherCategoryGames = await otherQuery
-                    .orderBy(desc(sql`ranking_score`))
-                    .limit(remainingSlots)
-                    .offset(otherCategoryOffset);
-
-                // Add to results
-                resultGames = [...resultGames, ...otherCategoryGames];
-            }
-        }
-
-        res.json({
-            games: resultGames,
-            usedAdditionalGames
-        });
+        res.json({ games: resultGames });
     } catch (error) {
         console.error('Error fetching game suggestions:', error);
         res.status(500).json({ error: 'Failed to fetch game suggestions.' });
