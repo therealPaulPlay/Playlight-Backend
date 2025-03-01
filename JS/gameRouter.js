@@ -4,7 +4,7 @@ const { standardLimiter, heavyLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId, isPasswordValid } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics, users } = require('./schema');
-const { eq, and, gte, desc, or, like } = require('drizzle-orm');
+const { eq, and, gte, desc, or, like, asc } = require('drizzle-orm');
 
 // Fetch games with pagination and search (id is the user id here)
 gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -215,7 +215,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
                     gte(statistics.date, startDate)
                 )
             )
-            .orderBy(desc(statistics.date));
+            .orderBy(asc(statistics.date));
 
         res.json(stats);
     } catch (error) {
