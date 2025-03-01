@@ -104,7 +104,7 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
     const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl, password } = req.body;
 
     if (!password) return res.status(400).json({ error: "Password is missing." });
-    if (description.length > 500) return res.status(400).json({ error: 'Description too long.' });
+    if (description.length > 300) return res.status(400).json({ error: 'Description too long.' });
 
     try {
         // Check ownership or admin status
