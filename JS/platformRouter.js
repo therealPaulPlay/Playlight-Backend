@@ -23,10 +23,10 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             ((SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
              (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
              (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
-             CASE WHEN ${games.created_at} > ${thirtyDaysAgo} THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75 ELSE 0 END) 
+             CASE WHEN ${games.created_at} > ${thirtyDaysAgo} THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75 ELSE 0 END)
             * ${games.boost_factor}`;
 
-        // Build base query
+        // Build query
         let query = db
             .select({
                 id: games.id,
@@ -43,10 +43,18 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             .from(games);
 
         // Apply filters
-        if (category) query = query.where(eq(games.category, category));
-        if (without) query = query.where(ne(games.domain, without));
+        if (category && without) {
+            query = query.where(and(
+                eq(games.category, category),
+                ne(games.domain, without)
+            ));
+        } else if (category) {
+            query = query.where(eq(games.category, category));
+        } else if (without) {
+            query = query.where(ne(games.domain, without));
+        }
 
-        // Execute query with pagination
+        // Execute query
         const resultGames = await query
             .orderBy(desc(sql`ranking_score`))
             .limit(pageSize)
