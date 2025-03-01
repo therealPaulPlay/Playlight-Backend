@@ -55,17 +55,12 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             .limit(pageSize)
             .offset(offset);
 
-        // Get total count for pagination of the filtered category
-        let countQuery = db.select({ count: sql`COUNT(*)` }).from(games);
-        if (category) countQuery = countQuery.where(eq(games.category, category));
-        const [{ count }] = await countQuery;
-
-        // If we don't have enough games in the category and a category was selected,
-        // fetch additional games from other categories to fill up to pageSize
         let resultGames = categoryGames;
+        let usedAdditionalGames = false;
 
+        // If there aren't enough games in the selected category, fetch games from other categories
         if (category && categoryGames.length < pageSize) {
-            // Get additional games from other categories
+            usedAdditionalGames = true;
             const additionalGamesNeeded = pageSize - categoryGames.length;
 
             const otherCategoryGames = await db
@@ -103,11 +98,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
 
         res.json({
             games: resultGames,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(count / pageSize),
-                totalGames: count
-            }
+            usedAdditionalGames
         });
     } catch (error) {
         console.error('Error fetching game suggestions:', error);
