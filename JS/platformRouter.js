@@ -10,7 +10,7 @@ const { eq, and, gte, desc, sql, ne, lt } = require('drizzle-orm');
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
     const db = getDB();
     const { category } = req.params;
-    const { page = 1 } = req.query;
+    const { page = 1, without } = req.query;
     const pageSize = 10;
     const offset = (parseInt(page) - 1) * pageSize;
 
@@ -46,8 +46,8 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             })
             .from(games);
 
-        // Apply category filter only if provided
-        if (category) query = query.where(eq(games.category, category));
+        if (category) query = query.where(eq(games.category, category)); // Apply category filter if provided
+        if (without) query = query.where(ne(games.domain, without)); // Apply domain filter if provided
 
         // Complete the query with ordering and pagination
         const categoryGames = await query
@@ -63,7 +63,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             usedAdditionalGames = true;
             const additionalGamesNeeded = pageSize - categoryGames.length;
 
-            const otherCategoryGames = await db
+            const otherCategoryQuery = db
                 .select({
                     id: games.id,
                     name: games.name,
@@ -88,7 +88,12 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             `.as('ranking_score')
                 })
                 .from(games)
-                .where(ne(games.category, category))
+                .where(ne(games.category, category));
+
+            // Apply domain filter to additional games as well
+            if (without) otherCategoryQuery.where(ne(games.domain, without));
+
+            const otherCategoryGames = await otherCategoryQuery
                 .orderBy(desc(sql`ranking_score`))
                 .limit(additionalGamesNeeded);
 
