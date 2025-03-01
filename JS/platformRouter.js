@@ -4,7 +4,7 @@ const platformRouter = express.Router();
 const { heavyLimiter, standardLimiter, openLimiter } = require("./rateLimiting.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics } = require('./schema.js');
-const { eq, and, gte, desc, sql, ne } = require('drizzle-orm');
+const { eq, and, gte, desc, sql, ne, lt } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
@@ -328,5 +328,20 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
         res.status(500).json({ error: 'Failed to record click event.' });
     }
 });
+
+// Run every hour
+setInterval(async () => {
+    const db = getDB();
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    // Delete old records
+    await db
+        .delete(statistics)
+        .where(lt(statistics.date, sixMonthsAgo));
+
+    console.log(`Statistics cleanup completed.`);
+}, 60 * 60 * 1000); // 1 hour
 
 module.exports = platformRouter;
