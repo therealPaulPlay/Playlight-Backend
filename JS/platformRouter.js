@@ -38,7 +38,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
               (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
               CASE
                 WHEN ${games.created_at} > ${thirtyDaysAgo}
-                THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
+                THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75
                 ELSE 0
               END
             ) * ${games.boost_factor}
@@ -82,10 +82,11 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
                     ranking_score: sql`
               (
                 (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
-                (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+                (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+                (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
                 CASE
                   WHEN ${games.created_at} > ${thirtyDaysAgo}
-                  THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
+                  THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75
                   ELSE 0
                 END
               ) * ${games.boost_factor}
