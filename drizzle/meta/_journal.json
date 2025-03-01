@@ -8,6 +8,13 @@
       "when": 1740427253792,
       "tag": "0000_misty_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1740794165189,
+      "tag": "0001_cooing_raider",
+      "breakpoints": true
     }
   ]
 }

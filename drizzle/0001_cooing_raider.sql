@@ -1,0 +1,1 @@
+ALTER TABLE `statistics` ADD `referrals` int DEFAULT 0 NOT NULL;

@@ -34,7 +34,8 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
                 ranking_score: sql`
             (
               (SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
-              (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+              (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
+              (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
               CASE
                 WHEN ${games.created_at} > ${thirtyDaysAgo}
                 THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 0.5
@@ -225,7 +226,8 @@ platformRouter.post('/event/open', openLimiter, async (req, res) => {
                     game_id: game[0].id,
                     date: today,
                     playlight_opens: 1,
-                    clicks: 0
+                    clicks: 0,
+                    referrals: 0
                 });
         }
 
@@ -266,8 +268,8 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Update or create statistics for today for the clicked game
-        const existingStats = await db
+        // Update or create statistics for today for the clicked game (target)
+        const existingTargetStats = await db
             .select()
             .from(statistics)
             .where(
@@ -278,13 +280,13 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
             )
             .limit(1);
 
-        if (existingStats.length > 0) {
+        if (existingTargetStats.length > 0) {
             await db
                 .update(statistics)
                 .set({
-                    clicks: existingStats[0].clicks + 1
+                    clicks: existingTargetStats[0].clicks + 1
                 })
-                .where(eq(statistics.id, existingStats[0].id));
+                .where(eq(statistics.id, existingTargetStats[0].id));
         } else {
             await db
                 .insert(statistics)
@@ -292,7 +294,39 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
                     game_id: gameId,
                     date: today,
                     clicks: 1,
-                    playlight_opens: 0
+                    playlight_opens: 0,
+                    referrals: 0
+                });
+        }
+
+        // Update or create statistics for the source game (tracking referrals)
+        const existingSourceStats = await db
+            .select()
+            .from(statistics)
+            .where(
+                and(
+                    eq(statistics.game_id, sourceGame[0].id),
+                    eq(statistics.date, today)
+                )
+            )
+            .limit(1);
+
+        if (existingSourceStats.length > 0) {
+            await db
+                .update(statistics)
+                .set({
+                    referrals: existingSourceStats[0].referrals + 1
+                })
+                .where(eq(statistics.id, existingSourceStats[0].id));
+        } else {
+            await db
+                .insert(statistics)
+                .values({
+                    game_id: sourceGame[0].id,
+                    date: today,
+                    clicks: 0,
+                    playlight_opens: 0,
+                    referrals: 1
                 });
         }
 

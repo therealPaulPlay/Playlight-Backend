@@ -206,7 +206,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         const stats = await db.select({
             date: statistics.date,
             playersGained: statistics.clicks,
-            gamesReferred: statistics.playlight_opens
+            gamesReferred: statistics.referrals
         })
             .from(statistics)
             .where(
