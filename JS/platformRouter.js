@@ -1,7 +1,7 @@
 // platformRouter.js
 const express = require('express');
 const platformRouter = express.Router();
-const { heavyLimiter, standardLimiter } = require("./rateLimiting.js");
+const { heavyLimiter, standardLimiter, openLimiter } = require("./rateLimiting.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics } = require('./schema.js');
 const { eq, and, gte, desc, sql, ne } = require('drizzle-orm');
@@ -142,18 +142,33 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
     }
 });
 
-// Get available categories
+// Get available categories with caching
+let categoriesCache = {
+    data: null,
+    lastFetched: 0
+};
+
 platformRouter.get('/categories', standardLimiter, async (req, res) => {
     const db = getDB();
-
     try {
-        // Get unique categories that have at least one game
+        const currentTime = Date.now();
+
+        // Check if cache is valid
+        if (categoriesCache.data && (currentTime - categoriesCache.lastFetched) < 10000) { // 10s
+            return res.json(categoriesCache.data);
+        }
+
+        // Cache expired or doesn't exist, fetch fresh data
         const categories = await db
             .select({ category: games.category })
             .from(games)
             .groupBy(games.category);
 
-        res.json(categories.map(c => c.category));
+        // Update cache
+        categoriesCache.data = categories.map(c => c.category);
+        categoriesCache.lastFetched = currentTime;
+
+        res.json(categoriesCache.data);
     } catch (error) {
         console.error('Error fetching categories:', error);
         res.status(500).json({ error: 'Failed to fetch categories.' });
@@ -161,7 +176,7 @@ platformRouter.get('/categories', standardLimiter, async (req, res) => {
 });
 
 // Record Playlight open event
-platformRouter.post('/event/open', heavyLimiter, async (req, res) => {
+platformRouter.post('/event/open', openLimiter, async (req, res) => {
     const db = getDB();
     const { domain } = req.body;
 

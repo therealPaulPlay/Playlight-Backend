@@ -35,4 +35,11 @@ const superHeavyLimiter = rateLimit({
     message: { error: 'You are sending too many requests.' }
 });
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter, heavyLimiter, superHeavyLimiter };
+const openLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 1,
+    message: { error: 'Not more than 1 open event per 10 minutes per user is counted.' }
+});
+
+module.exports = { loginLimiter, registerLimiter, standardLimiter, heavyLimiter, superHeavyLimiter, openLimiter };
