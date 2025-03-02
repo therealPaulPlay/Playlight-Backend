@@ -86,7 +86,7 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
             .limit(1);
 
         if (gameDetails.length === 0) {
-            return res.status(404).json({ error: 'Game not found for this domain.' });
+            return res.status(404).json({ error: 'Could not find game for this domain.' });
         }
 
         res.json(gameDetails[0]);
