@@ -32,15 +32,14 @@ adminRouter.post('/whitelist', standardLimiter, authenticateTokenWithId, isAdmin
     }
 
     try {
+        const formattedEmail = email.trim().toLowerCase();
         // Check if email already exists in whitelist
-        const existing = await db.select().from(whitelist).where(eq(whitelist.email, email.toLowerCase())).limit(1);
-        if (existing.length > 0) {
-            return res.status(409).json({ error: 'Email already in whitelist.' });
-        }
+        const existing = await db.select().from(whitelist).where(eq(whitelist.email, formattedEmail)).limit(1);
+        if (existing.length > 0) return res.status(409).json({ error: 'Email already on the whitelist.' });
 
         // Add to whitelist
         await db.insert(whitelist).values({
-            email: email.toLowerCase(),
+            email: formattedEmail,
             created_at: new Date()
         });
 
