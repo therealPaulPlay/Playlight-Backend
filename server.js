@@ -27,6 +27,12 @@ app.use(cors({
             return;
         }
 
+        // Allow all localhost origins
+        if (!origin || origin.includes('localhost')) {
+            callback(null, true);
+            return;
+        }
+
         // Other routes use the configured CORS origins
         const corsOrigins = process.env.CORS_ORIGIN.split(',').map(o =>
             /^\/.*\/$/.test(o) ? new RegExp(o.slice(1, -1)) : o
