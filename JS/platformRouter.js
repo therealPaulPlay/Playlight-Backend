@@ -3,7 +3,7 @@ const express = require('express');
 const platformRouter = express.Router();
 const { heavyLimiter, standardLimiter, openLimiter } = require("./rateLimiting.js");
 const { getDB } = require("./connectDB.js");
-const { games, statistics } = require('./schema.js');
+const { games, statistics, likes } = require('./schema.js');
 const { eq, and, gte, desc, sql, ne, lt, inArray } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
@@ -23,6 +23,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             ((SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
              (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
              (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
+             ${games.likes} * 2 +
              CASE WHEN ${games.created_at} > ${thirtyDaysAgo} THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75 ELSE 0 END)
             * ${games.boost_factor}`;
 
@@ -38,6 +39,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
                 domain: games.domain,
                 created_at: games.created_at,
                 category: games.category,
+                likes: games.likes,
                 ranking_score: scoreCalculation.as('ranking_score')
             })
             .from(games);
@@ -79,7 +81,8 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
                 name: games.name,
                 category: games.category,
                 description: games.description,
-                logo_url: games.logo_url
+                logo_url: games.logo_url,
+                likes: games.likes
             })
             .from(games)
             .where(eq(games.domain, domain))
@@ -287,6 +290,75 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
     } catch (error) {
         console.error('Error recording click event:', error);
         res.status(500).json({ error: 'Failed to record click event.' });
+    }
+});
+
+// Handle game ratings (likes/unlikes)
+platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res) => {
+    const db = getDB();
+    const { gameId, action } = req.params;
+    const clientIp = req.clientIp;
+
+    if (!gameId || !clientIp || !['like', 'unlike'].includes(action)) {
+        return res.status(400).json({ error: 'Valid game ID, client IP, and action (like/unlike) are required.' });
+    }
+
+    try {
+        const existingLike = await db
+            .select({ id: likes.id })
+            .from(likes)
+            .where(
+                and(
+                    eq(likes.game_id, gameId),
+                    eq(likes.ip, clientIp)
+                )
+            )
+            .limit(1);
+
+        const hasLiked = existingLike.length > 0;
+
+        if (action === 'like' && hasLiked) return res.status(409).json({ error: 'You have already liked this game.' });
+        if (action === 'unlike' && !hasLiked) return res.status(400).json({ error: 'You have not liked this game yet.' });
+
+        await db.transaction(async (tx) => {
+            if (action === 'like') {
+                // Add like
+                await tx
+                    .insert(likes)
+                    .values({
+                        game_id: gameId,
+                        date: new Date(),
+                        ip: clientIp
+                    });
+
+                await tx
+                    .update(games)
+                    .set({
+                        likes: sql`${games.likes} + 1`
+                    })
+                    .where(eq(games.id, gameId));
+            } else {
+                // Remove like
+                await tx
+                    .delete(likes)
+                    .where(eq(likes.id, existingLike[0].id));
+
+                await tx
+                    .update(games)
+                    .set({
+                        likes: sql`GREATEST(${games.likes} - 1, 0)`
+                    })
+                    .where(eq(games.id, gameId));
+            }
+        });
+
+        res.json({
+            success: true,
+            message: action === 'like' ? 'Game liked successfully.' : 'Like removed successfully.'
+        });
+    } catch (error) {
+        console.error(`Error ${action} game:`, error);
+        res.status(500).json({ error: `Failed to ${action} game.` });
     }
 });
 

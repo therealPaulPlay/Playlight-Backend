@@ -15,6 +15,20 @@
       "when": 1740794165189,
       "tag": "0001_cooing_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1741912949168,
+      "tag": "0002_lush_the_anarchist",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1741913058773,
+      "tag": "0003_sturdy_riptide",
+      "breakpoints": true
     }
   ]
 }

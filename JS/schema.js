@@ -31,6 +31,7 @@ const games = mysqlTable('games', {
     cover_video_url: varchar('cover_video_url', { length: 255 }),
     domain: varchar('domain', { length: 255 }).notNull(),
     boost_factor: float().default(1.0).notNull(),
+    likes: int().default(0).notNull(),
     created_at: timestamp().notNull(),
 }, (table) => [
     index('owner_id_idx').on(table.owner_id),
@@ -53,4 +54,14 @@ const statistics = mysqlTable('statistics', {
     index('game_id_date_idx').on(table.game_id, table.date),
 ]);
 
-module.exports = { users, whitelist, games, statistics };
+const likes = mysqlTable('likes', {
+    id: serial().primaryKey(),
+    game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    date: timestamp().notNull(),
+    ip: varchar('ip', { length: 255 }),
+}, (table) => [
+    index('game_id_idx').on(table.game_id),
+    uniqueIndex('game_id_ip_idx').on(table.game_id, table.ip),
+]);
+
+module.exports = { users, whitelist, games, statistics, likes };
