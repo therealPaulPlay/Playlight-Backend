@@ -4,7 +4,7 @@ const { standardLimiter, heavyLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId, isPasswordValid } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics, users } = require('./schema');
-const { eq, and, gte, desc, or, like, asc } = require('drizzle-orm');
+const { eq, and, gte, desc, or, like, asc, sql } = require('drizzle-orm');
 
 // Fetch games with pagination and search (id is the user id here)
 gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -186,7 +186,6 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
     const db = getDB();
     const gameId = parseInt(req.params.id);
     const { days, id: userId } = req.body;
-
     try {
         // Verify ownership or admin status
         const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -195,16 +194,15 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         if (!game[0]) {
             return res.status(404).json({ error: 'Game not found.' });
         }
-
         if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
-
+        
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days || 7));
-
         const stats = await db.select({
-            date: statistics.date,
+            // This uses SQL's DATE() function to format the date without the time
+            date: sql`DATE(${statistics.date})`,
             playersGained: statistics.clicks,
             gamesReferred: statistics.referrals
         })

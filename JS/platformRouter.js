@@ -154,7 +154,7 @@ platformRouter.post('/event/open', openLimiter, async (req, res) => {
         }
 
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCHours(0, 0, 0, 0);
 
         // Update or create statistics for today
         const existingStats = await db
@@ -222,7 +222,7 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
         }
 
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        today.setUTCHours(0, 0, 0, 0);
 
         // Update or create statistics for today for the clicked game (target)
         const existingTargetStats = await db
