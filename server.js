@@ -18,16 +18,10 @@ const { connectDB } = require("./JS/connectDB.js");
 
 const app = express();
 
-// CORS configuration ------------------------------------------------------------
-app.use(cors({
+// Regular CORS config
+const defaultCors = cors({
     origin: (origin, callback) => {
-        // Public platform endpoints always allow any origin
-        if (origin && origin.includes('/platform/')) {
-            callback(null, true);
-            return;
-        }
-
-        // Allow all localhost origins
+        // Bypass cors for all localhost origins
         if (!origin || origin.includes('localhost')) {
             callback(null, true);
             return;
@@ -38,7 +32,7 @@ app.use(cors({
             /^\/.*\/$/.test(o) ? new RegExp(o.slice(1, -1)) : o
         );
 
-        if (!origin || corsOrigins.some(pattern =>
+        if (corsOrigins.some(pattern =>
             typeof pattern === 'string' ? pattern === origin : pattern.test(origin)
         )) {
             callback(null, true);
@@ -46,7 +40,12 @@ app.use(cors({
             callback(new Error('Not allowed by CORS'));
         }
     }
-}));
+});
+
+// Open CORS configuration for platform routes
+const platformCors = cors({
+    origin: '*'
+});
 
 // Middleware
 app.use(express.json()); // Parse the body as json for all routes
@@ -56,22 +55,25 @@ app.use(xss());
 // Database Connection
 connectDB();
 
-// Routers
-app.use("/account", accountRouter);
-app.use("/admin", adminRouter);
-app.use("/game", gameRouter);
-app.use("/contact", contactRouter);
-app.use("/platform", platformRouter);
-app.use("/uploads/utapi", utapiRouter);
+// Apply default CORS to most routes
+app.use("/account", defaultCors, accountRouter);
+app.use("/admin", defaultCors, adminRouter);
+app.use("/game", defaultCors, gameRouter);
+app.use("/contact", defaultCors, contactRouter);
+app.use("/uploads/utapi", defaultCors, utapiRouter);
 app.use(
     "/uploads/uploadthing",
+    defaultCors,
     createRouteHandler({
         router: uploadRouter,
     }),
 );
 
+// Apply open CORS only to platform routes
+app.use("/platform", platformCors, platformRouter);
+
 // Health check
-app.get('/health', (req, res) => {
+app.use("/health", defaultCors, (req, res) => {
     res.status(200).json({ message: 'Server is healthy.' });
 });
 
