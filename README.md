@@ -6,7 +6,7 @@ The algorithm may be changed in the future depending on the circumstanes, but th
 
 - Clicks (Like with e.g. YouTube, how many people click on your game on the Discovery) **Significant**
 - Referrals (How many games other people find/click on via the Discovery on _your_ site) **Significant**
-- Opens (The amount of players – not the amount of times – open the Discovery on your site) **Low**
+- Opens (The amount of players – not the amount of times – that open the Discovery on your site) **Low**
 - Novelty (New games get more visibility) **Medium**
 - Likes (How many likes your game gets via the game display in the Discovery) **Medium**
 
