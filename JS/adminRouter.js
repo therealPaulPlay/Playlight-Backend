@@ -4,8 +4,8 @@ const adminRouter = express.Router();
 const { standardLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
-const { whitelist, users, games } = require('./schema');
-const { eq, like, and } = require('drizzle-orm');
+const { whitelist, users, statistics } = require('./schema');
+const { eq, like, and, sql, gte } = require('drizzle-orm');
 
 // Middleware to check if user is admin
 const isAdmin = async (req, res, next) => {
@@ -73,6 +73,55 @@ adminRouter.put('/all-whitelist', standardLimiter, authenticateTokenWithId, isAd
     } catch (error) {
         console.error('Error fetching whitelist:', error);
         res.status(500).json({ error: 'Failed to fetch whitelist.' });
+    }
+});
+
+// Get total statistics across all games by month
+let totalStatsCache = {
+    data: null,
+    lastFetched: 0
+};
+
+// Get platform / total statistics, by month
+adminRouter.get('/total-statistics', standardLimiter, async (req, res) => {
+    const db = getDB();
+    try {
+        const currentTime = Date.now();
+
+        // Check if cache is valid (5 minute)
+        if (totalStatsCache.data && (currentTime - totalStatsCache.lastFetched) < (5 * 60 * 1000)) {
+            return res.json(totalStatsCache.data);
+        }
+
+        // Get date 6 months ago from today
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // -5 to include current month (total of 6)
+        sixMonthsAgo.setDate(1); // First day of that month
+        sixMonthsAgo.setHours(0, 0, 0, 0); // Start of day
+
+        // Query to get monthly aggregated statistics
+        const monthlyStats = await db
+            .select({
+                // Format to YYYY-MM
+                yearMonth: sql`DATE_FORMAT(${statistics.date}, '%Y-%m')`,
+                totalPlaylightOpens: sql`SUM(${statistics.playlight_opens})`,
+                totalReferrals: sql`SUM(${statistics.referrals})`
+            })
+            .from(statistics)
+            .where(
+                gte(statistics.date, sixMonthsAgo)
+            )
+            .groupBy(sql`DATE_FORMAT(${statistics.date}, '%Y-%m')`)
+            .orderBy(sql`DATE_FORMAT(${statistics.date}, '%Y-%m') DESC`);
+
+        // Update cache
+        totalStatsCache.data = monthlyStats;
+        totalStatsCache.lastFetched = currentTime;
+
+        res.json(totalStatsCache.data);
+    } catch (error) {
+        console.error('Error fetching total statistics:', error);
+        res.status(500).json({ error: 'Failed to fetch total statistics.' });
     }
 });
 
