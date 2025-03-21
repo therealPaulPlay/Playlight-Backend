@@ -40,6 +40,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
                 created_at: games.created_at,
                 category: games.category,
                 likes: games.likes,
+                boost_factor: games.boost_factor,
                 ranking_score: scoreCalculation.as('ranking_score')
             })
             .from(games);
