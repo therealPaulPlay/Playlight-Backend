@@ -51,9 +51,9 @@ async function checkAdmin(id) {
 }
 
 const uploadRouter = {
-    // Logo uploader: expects a JPEG image (max 100KB) with dimensions 500x500.
-    logoUploader: f(["image/jpeg"], { image: { maxFileSize: "100KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
-        .middleware(async ({ req, files, res }) => {
+    // Logo uploader: expects a JPEG image (max 75KB) with dimensions 500x500.
+    logoUploader: f(["image/jpeg"], { image: { maxFileSize: "75KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
+        .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
             await checkAdmin(userId);
@@ -63,9 +63,9 @@ const uploadRouter = {
             return { uploadedBy: data.metadata.userId };
         }),
 
-    // Cover image uploader: expects a JPEG/PNG image (max 250KB) with dimensions 800x1200.
-    coverImageUploader: f(["image/jpeg"], { image: { maxFileSize: "250KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
-        .middleware(async ({ req, files, res }) => {
+    // Cover image uploader: expects a JPEG image (max 150KB) with dimensions 800x1200.
+    coverImageUploader: f(["image/jpeg"], { image: { maxFileSize: "150KB", maxFileCount: 1, allowedFileTypes: ["image/jpeg"] } })
+        .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
             await checkAdmin(userId);
