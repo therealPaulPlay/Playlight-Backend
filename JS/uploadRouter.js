@@ -6,7 +6,7 @@ const express = require('express');
 const { authenticateTokenWithId } = require("./authUtils.js");
 const { users, games } = require("./schema.js");
 const { getDB } = require("./connectDB.js");
-const { eq } = require("drizzle-orm");
+const { eq, like, or } = require("drizzle-orm");
 const utapiRouter = express.Router();
 
 const f = createUploadthing();
@@ -56,7 +56,6 @@ const uploadRouter = {
         .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
-            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -68,7 +67,6 @@ const uploadRouter = {
         .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
-            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -80,7 +78,6 @@ const uploadRouter = {
         .middleware(async ({ req, res }) => {
             await applyLimiter(req, res);
             const userId = await verifyAuth(req);
-            await checkAdmin(userId);
             return { userId };
         })
         .onUploadComplete((data) => {
@@ -89,12 +86,30 @@ const uploadRouter = {
 };
 
 // Delete file endpoint
-utapiRouter.delete('/delete-file', standardLimiter, authenticateTokenWithId, async (req, res) => {
+utapiRouter.delete('/delete-file-if-unused', standardLimiter, authenticateTokenWithId, async (req, res) => {
     try {
         const { fileKey } = req.body;
-
         if (!fileKey) return res.status(400).json({ error: "File key is required." });
-        await checkAdmin(req.body.id);
+
+        const db = getDB();
+        const usedImage = await db.select({
+            logoUrl: games.logo_url,
+            coverImageUrl: games.cover_image_url,
+            coverVideoUrl: games.cover_video_url
+        }).from(games).where(
+            or(
+                like(
+                    games.logo_url, "%" + fileKey
+                ),
+                like(
+                    games.cover_image_url, "%" + fileKey
+                ),
+                like(
+                    games.cover_video_url, "%" + fileKey
+                )
+            ));
+
+        if (usedImage[0]) return res.json({ used: true, message: "File is in use – aborting deletion." });
 
         // Delete the file using UTApi
         await utapi.deleteFiles(fileKey);
