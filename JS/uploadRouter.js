@@ -92,29 +92,18 @@ utapiRouter.delete('/delete-file-if-unused', standardLimiter, authenticateTokenW
         if (!fileKey) return res.status(400).json({ error: "File key is required." });
 
         const db = getDB();
+        const columns = [games.logo_url, games.cover_image_url, games.cover_video_url];
+        const conditions = columns.map(col => like(col, `%${fileKey}`)); // Create array with all the like clauses
+
         const usedImage = await db.select({
             logoUrl: games.logo_url,
             coverImageUrl: games.cover_image_url,
             coverVideoUrl: games.cover_video_url
-        }).from(games).where(
-            or(
-                like(
-                    games.logo_url, "%" + fileKey
-                ),
-                like(
-                    games.cover_image_url, "%" + fileKey
-                ),
-                like(
-                    games.cover_video_url, "%" + fileKey
-                )
-            ));
+        }).from(games).where(or(...conditions)); // Check if the key is in any of these urls (using like with %)
 
         if (usedImage[0]) return res.json({ used: true, message: "File is in use – aborting deletion." });
 
-        // Delete the file using UTApi
         await utapi.deleteFiles(fileKey);
-
-        // Return success response
         return res.json({ success: true, message: "File deleted successfully." });
     } catch (error) {
         console.error("Error deleting file:", error);
