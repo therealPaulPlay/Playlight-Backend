@@ -53,7 +53,7 @@ function authenticateTokenWithId(req, res, next) {
 
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
-                return res.status(403).json({ status: 403, error: "An error occurred decoding the Authentication token." });
+                return res.status(403).json({ status: 403, error: "Your authentication token is no longer valid. Please log in again." });
             }
 
             if (!decoded || !decoded.userId) {
