@@ -8,62 +8,66 @@ const { eq, and, gte, desc, sql, ne, lt, inArray } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
-    const db = getDB();
-    const { category } = req.params;
-    const { page = 1, without } = req.query;
-    const pageSize = 10;
-    const pageNum = parseInt(page);
-    const offset = (pageNum - 1) * pageSize;
-
     try {
-        // Calculate novelty score SQL
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const scoreCalculation = sql`
-            ((SELECT COALESCE(SUM(clicks), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 2 +
-             (SELECT COALESCE(SUM(referrals), 0) FROM ${statistics} WHERE game_id = ${games.id}) +
-             (SELECT COALESCE(SUM(playlight_opens), 0) FROM ${statistics} WHERE game_id = ${games.id}) * 0.1 +
-             ${games.likes} * 2 +
-             CASE WHEN ${games.created_at} > ${thirtyDaysAgo} THEN (30 - DATEDIFF(CURRENT_TIMESTAMP, ${games.created_at})) * 75 ELSE 0 END)
-            * ${games.boost_factor}`;
+        const db = getDB();
+        const { category } = req.params;
+        const { page = 1, without } = req.query;
+        const pageSize = 10;
+        const offset = (parseInt(page) - 1) * pageSize;
 
-        // Build query
-        let query = db
-            .select({
-                id: games.id,
-                name: games.name,
-                description: games.description,
-                logo_url: games.logo_url,
-                cover_image_url: games.cover_image_url,
-                cover_video_url: games.cover_video_url,
-                domain: games.domain,
-                created_at: games.created_at,
-                category: games.category,
-                likes: games.likes,
-                boost_factor: games.boost_factor,
-                ranking_score: scoreCalculation.as('ranking_score')
-            })
-            .from(games);
+        // Get games with filters
+        let query = db.select({
+            id: games.id, name: games.name, description: games.description,
+            logo_url: games.logo_url, cover_image_url: games.cover_image_url,
+            cover_video_url: games.cover_video_url, domain: games.domain,
+            created_at: games.created_at, category: games.category,
+            likes: games.likes, boost_factor: games.boost_factor
+        }).from(games);
 
         // Apply filters
-        if (category && without) {
-            query = query.where(and(
-                eq(games.category, category),
-                ne(games.domain, without)
-            ));
-        } else if (category) {
-            query = query.where(eq(games.category, category));
-        } else if (without) {
-            query = query.where(ne(games.domain, without));
-        }
+        if (category && without) query = query.where(and(eq(games.category, category), ne(games.domain, without)));
+        else if (category) query = query.where(eq(games.category, category));
+        else if (without) query = query.where(ne(games.domain, without));
 
-        // Execute query
-        const resultGames = await query
-            .orderBy(desc(sql`ranking_score`))
-            .limit(pageSize)
-            .offset(offset);
+        const resultGames = await query; // Get games from db
 
-        res.json({ games: resultGames });
+        // Get stats in a single query
+        const gameIds = resultGames.map(g => g.id); // Array of game ids
+        const statsResults = await db.select({
+            game_id: statistics.game_id,
+            clicks: sql`SUM(${statistics.clicks})`.as('clicks'),
+            referrals: sql`SUM(${statistics.referrals})`.as('referrals'),
+            opens: sql`SUM(${statistics.playlight_opens})`.as('opens')
+        }).from(statistics).where(inArray(statistics.game_id, gameIds)).groupBy(statistics.game_id);
+
+        // Create stats map
+        const statsMap = Object.fromEntries(statsResults.map(s => [
+            s.game_id, {
+                clicks: Number(s.clicks || 0),
+                referrals: Number(s.referrals || 0),
+                opens: Number(s.opens || 0)
+            }
+        ]));
+
+        // Calculate scores, sort and paginate
+        const gamesWithScores = resultGames.map(game => {
+            const stats = statsMap[game.id] || { clicks: 0, referrals: 0, opens: 0 };
+
+            // Calculate age bonus directly (bonus for new games)
+            const createdDate = new Date(game.created_at);
+            const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (24 * 60 * 60 * 1000));
+            const ageBonus = daysSinceCreation < 30 ? (30 - daysSinceCreation) * 75 : 0;
+
+            const clicksScore = stats.clicks * 2;
+            const referralsScore = stats.referrals;
+            const opensScore = Math.round(stats.opens * 0.1);
+            const likesScore = Number(game.likes) * 5;
+            const rankingScore = Math.round((clicksScore + referralsScore + opensScore + likesScore + ageBonus) * Number(game.boost_factor));
+
+            return { ...game, ranking_score: rankingScore };
+        }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
+
+        res.json({ games: gamesWithScores });
     } catch (error) {
         console.error('Error fetching game suggestions:', error);
         res.status(500).json({ error: 'Failed to fetch game suggestions.' });
