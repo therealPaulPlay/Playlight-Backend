@@ -61,7 +61,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             const clicksScore = stats.clicks * 2;
             const referralsScore = stats.referrals;
             const opensScore = Math.round(stats.opens * 0.1);
-            const likesScore = Number(game.likes) * 5;
+            const likesScore = Number(game.likes) * 10;
             const rankingScore = Math.round((clicksScore + referralsScore + opensScore + likesScore + ageBonus) * Number(game.boost_factor));
 
             return { ...game, ranking_score: rankingScore };
