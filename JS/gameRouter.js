@@ -101,7 +101,7 @@ gameRouter.post('/', heavyLimiter, authenticateTokenWithId, async (req, res) => 
 gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
     const gameId = parseInt(req.params.id);
-    const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl, password } = req.body;
+    const { id: userId, name, category, description, domain, logoUrl, coverImageUrl, coverVideoUrl, remoteConfig, password } = req.body;
 
     if (!password) return res.status(400).json({ error: "Password is missing." });
     if (description.length > 300) return res.status(400).json({ error: 'Description too long.' });
@@ -134,7 +134,8 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
                 domain,
                 logo_url: logoUrl,
                 cover_image_url: coverImageUrl,
-                cover_video_url: coverVideoUrl
+                cover_video_url: coverVideoUrl,
+                remote_config: remoteConfig
             })
             .where(eq(games.id, gameId));
 
@@ -197,7 +198,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
-        
+
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days || 7));
         const stats = await db.select({
