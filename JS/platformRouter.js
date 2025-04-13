@@ -12,7 +12,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
         const db = getDB();
         const { category } = req.params;
         const { page = 1, without } = req.query;
-        const pageSize = 10;
+        const pageSize = 15;
         const offset = (parseInt(page) - 1) * pageSize;
 
         // Get games with filters
@@ -67,7 +67,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             return { ...game, ranking_score: rankingScore };
         }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
 
-        res.json({ games: gamesWithScores });
+        res.json({ games: gamesWithScores, pageSize });
     } catch (error) {
         console.error('Error fetching game suggestions:', error);
         res.status(500).json({ error: 'Failed to fetch game suggestions.' });
@@ -371,14 +371,12 @@ platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res)
 setInterval(async () => {
     const db = getDB();
 
+    // Delete old statistics records
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    // Delete old records
     await db
         .delete(statistics)
         .where(lt(statistics.date, sixMonthsAgo));
-
     console.log(`Statistics cleanup completed.`);
 }, 60 * 60 * 1000); // 1 hour
 
