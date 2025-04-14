@@ -87,8 +87,7 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
                 category: games.category,
                 description: games.description,
                 logo_url: games.logo_url,
-                likes: games.likes,
-                remote_config: games.remote_config
+                likes: games.likes
             })
             .from(games)
             .where(eq(games.domain, domain))

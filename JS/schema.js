@@ -1,5 +1,5 @@
 // schema.js
-const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, json } = require('drizzle-orm/mysql-core');
+const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint } = require('drizzle-orm/mysql-core');
 
 const users = mysqlTable('users', {
     id: serial().primaryKey(),
@@ -32,7 +32,6 @@ const games = mysqlTable('games', {
     domain: varchar('domain', { length: 255 }).notNull(),
     boost_factor: float().default(1.0).notNull(),
     likes: int().default(0).notNull(),
-    remote_config: json(),
     created_at: timestamp().notNull(),
 }, (table) => [
     index('owner_id_idx').on(table.owner_id),

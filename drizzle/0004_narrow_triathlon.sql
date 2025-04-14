@@ -1,1 +1,0 @@
-ALTER TABLE `games` ADD `remote_config` json;
