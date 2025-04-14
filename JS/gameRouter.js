@@ -197,7 +197,7 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         if (!user[0].is_admin && game[0].owner_id != userId) {
             return res.status(403).json({ error: 'Unauthorized.' });
         }
-        
+
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days || 7));
         const stats = await db.select({
