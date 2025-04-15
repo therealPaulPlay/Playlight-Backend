@@ -32,7 +32,7 @@ const games = mysqlTable('games', {
     domain: varchar('domain', { length: 255 }).notNull(),
     boost_factor: float().default(1.0).notNull(),
     likes: int().default(0).notNull(),
-    featured_game: bigint('featured_game', { unsigned: true }),
+    featured_game: bigint('featured_game', { unsigned: true, mode: 'number' }),
     feature_expires_at: timestamp(),
     created_at: timestamp().notNull(),
 }, (table) => [
