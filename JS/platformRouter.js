@@ -4,7 +4,7 @@ const platformRouter = express.Router();
 const { heavyLimiter, standardLimiter, openLimiter } = require("./rateLimiting.js");
 const { getDB } = require("./connectDB.js");
 const { games, statistics, likes } = require('./schema.js');
-const { eq, and, gte, desc, sql, ne, lt, inArray } = require('drizzle-orm');
+const { eq, and, sql, ne, lt, inArray, aliasedTable, isNotNull } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
@@ -80,6 +80,9 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
     const { domain } = req.params;
 
     try {
+        // Create an aliased table for the featured game
+        const featuredGameTable = aliasedTable(games, 'featured_game');
+
         const gameDetails = await db
             .select({
                 id: games.id,
@@ -87,15 +90,29 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
                 category: games.category,
                 description: games.description,
                 logo_url: games.logo_url,
-                likes: games.likes
+                likes: games.likes,
+                featured_game: {
+                    id: featuredGameTable.id,
+                    name: featuredGameTable.name,
+                    description: featuredGameTable.description,
+                    logo_url: featuredGameTable.logo_url,
+                    cover_image_url: featuredGameTable.cover_image_url,
+                    cover_video_url: featuredGameTable.cover_video_url,
+                    domain: featuredGameTable.domain,
+                    created_at: featuredGameTable.created_at,
+                    category: featuredGameTable.category,
+                    likes: featuredGameTable.likes
+                }
             })
             .from(games)
+            .leftJoin(
+                featuredGameTable,
+                eq(games.featured_game, featuredGameTable.id)
+            )
             .where(eq(games.domain, domain))
             .limit(1);
 
-        if (gameDetails.length === 0) {
-            return res.status(404).json({ error: 'Could not find game for this domain.' });
-        }
+        if (gameDetails.length === 0) return res.status(404).json({ error: 'Could not find game for this domain.' });
 
         res.json(gameDetails[0]);
     } catch (error) {
@@ -370,14 +387,33 @@ platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res)
 // Run every hour
 setInterval(async () => {
     const db = getDB();
+    try {
+        // Delete old statistics records
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        await db
+            .delete(statistics)
+            .where(lt(statistics.date, sixMonthsAgo));
 
-    // Delete old statistics records
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    await db
-        .delete(statistics)
-        .where(lt(statistics.date, sixMonthsAgo));
-    console.log(`Statistics cleanup completed.`);
+        // Check for expired featured games and remove their featured status
+        const currentTime = new Date();
+        await db
+            .update(games)
+            .set({
+                featured_game: null,
+                feature_expires_at: null
+            })
+            .where(
+                and(
+                    isNotNull(games.feature_expires_at),
+                    lt(games.feature_expires_at, currentTime)
+                )
+            );
+
+        console.log("Stats and featured games cleanup completed.");
+    } catch (error) {
+        console.error('Error in scheduled cleanup task in platformRouter.js:', error);
+    }
 }, 60 * 60 * 1000); // 1 hour
 
 module.exports = platformRouter;

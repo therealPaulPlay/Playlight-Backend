@@ -29,6 +29,27 @@
       "when": 1741913058773,
       "tag": "0003_sturdy_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1744738140046,
+      "tag": "0004_wide_changeling",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1744738893735,
+      "tag": "0005_panoramic_mulholland_black",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1744738923492,
+      "tag": "0006_jazzy_maelstrom",
+      "breakpoints": true
     }
   ]
 }

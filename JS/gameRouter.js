@@ -111,13 +111,8 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
         const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
-        if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found.' });
-        }
-
-        if (!user[0].is_admin && game[0].owner_id != userId) {
-            return res.status(403).json({ error: 'Unauthorized.' });
-        }
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
 
         // Verify password
         const isValidPassword = await isPasswordValid(password, user[0].password);
@@ -142,6 +137,49 @@ gameRouter.put('/:id', standardLimiter, authenticateTokenWithId, async (req, res
     } catch (error) {
         console.error('Error updating game:', error);
         res.status(500).json({ error: 'Failed to update game.' });
+    }
+});
+
+// Set featured game
+gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const gameId = parseInt(req.params.id);
+    const { id: userId, featuredGameDomain, days } = req.body;
+
+    if (!userId || !gameId) return res.status(400).json({ error: "User id and game id are required." });
+    if (days && days > 30) return res.status(400).json({ error: "Can't feature a game for more than 30 days." });
+
+    try {
+        // Check ownership or admin status
+        const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+
+        let featuredGame;
+        if (featuredGameDomain) featuredGame = await db.select().from(games).where(eq(games.domain, featuredGameDomain)).limit(1);
+
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (featuredGameDomain && !featuredGame[0]) return res.status(404).json({ error: 'Featured game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
+
+        let expirationDate = null;
+        if (days) {
+            expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + parseInt(days));
+        }
+
+        // Update game with feature
+        await db.update(games)
+            .set({
+                featured_game: featuredGame?.[0]?.id || null,
+                feature_expires_at: expirationDate
+            })
+            .where(eq(games.id, gameId));
+
+        res.json({ message: 'Featured game updated successfully.' });
+
+    } catch (error) {
+        console.error('Error updating featured game:', error);
+        res.status(500).json({ error: 'Failed to update featured game.' });
     }
 });
 

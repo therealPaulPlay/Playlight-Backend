@@ -1,5 +1,5 @@
 // schema.js
-const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint } = require('drizzle-orm/mysql-core');
+const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey } = require('drizzle-orm/mysql-core');
 
 const users = mysqlTable('users', {
     id: serial().primaryKey(),
@@ -32,13 +32,20 @@ const games = mysqlTable('games', {
     domain: varchar('domain', { length: 255 }).notNull(),
     boost_factor: float().default(1.0).notNull(),
     likes: int().default(0).notNull(),
+    featured_game: bigint('featured_game', { unsigned: true }),
+    feature_expires_at: timestamp(),
     created_at: timestamp().notNull(),
 }, (table) => [
     index('owner_id_idx').on(table.owner_id),
     index('category_idx').on(table.category),
     uniqueIndex('domain_idx').on(table.domain),
     index('name_idx').on(table.name),
-    index('created_at_idx').on(table.created_at)
+    index('created_at_idx').on(table.created_at),
+    foreignKey({
+        columns: [table.featured_game],
+        foreignColumns: [table.id],
+        name: 'games_featured_game_fk'
+    }).onDelete('set null')
 ]);
 
 const statistics = mysqlTable('statistics', {
