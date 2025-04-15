@@ -158,7 +158,8 @@ gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWit
         if (featuredGameDomain) featuredGame = await db.select().from(games).where(eq(games.domain, featuredGameDomain)).limit(1);
 
         if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
-        if (featuredGameDomain && !featuredGame[0]) return res.status(404).json({ error: 'Featured game not found.' });
+        if (featuredGameDomain && !featuredGame?.[0]) return res.status(404).json({ error: 'Featured game not found.' });
+        if (featuredGame?.[0] && featuredGame?.[0]?.id == gameId) return res.status(404).json({ error: 'Cannot feature this game on its own site.' });
         if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
 
         let expirationDate = null;
@@ -175,7 +176,7 @@ gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWit
             })
             .where(eq(games.id, gameId));
 
-        res.json({ message: 'Featured game updated successfully.' });
+        res.json({ message: 'Featured game updated successfully.', featuredGameId: featuredGame?.[0]?.id || null, featureExpiresAt: expirationDate });
 
     } catch (error) {
         console.error('Error updating featured game:', error);
