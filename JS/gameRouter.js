@@ -146,7 +146,6 @@ gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWit
     const gameId = parseInt(req.params.id);
     const { id: userId, featuredGameDomain, days } = req.body;
 
-    if (!userId || !gameId) return res.status(400).json({ error: "User id and game id are required." });
     if (days && days > 30) return res.status(400).json({ error: "Can't feature a game for more than 30 days." });
 
     try {
@@ -158,9 +157,9 @@ gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWit
         if (featuredGameDomain) featuredGame = await db.select().from(games).where(eq(games.domain, featuredGameDomain)).limit(1);
 
         if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
-        if (featuredGameDomain && !featuredGame?.[0]) return res.status(404).json({ error: 'Featured game not found.' });
-        if (featuredGame?.[0] && featuredGame?.[0]?.id == gameId) return res.status(404).json({ error: 'Cannot feature this game on its own site.' });
         if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
+        if (featuredGameDomain && !featuredGame?.[0]) return res.status(404).json({ error: 'Game to feature not found.' });
+        if (featuredGame?.[0] && featuredGame?.[0]?.id == gameId) return res.status(404).json({ error: 'Cannot feature this game on its own site.' });
 
         let expirationDate = null;
         if (days) {
