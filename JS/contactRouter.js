@@ -25,9 +25,9 @@ contactRouter.post('/submit', heavyLimiter, async (req, res) => {
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: process.env.NOTIFICATION_EMAIL,
-            subject: `Playlight Form Submission (${website})`,
+            subject: `Playlight submission (${website})`,
             text: `
-Contact Form Submission:
+Contact form submission:
 
 From: ${email}
 Website: ${website}
