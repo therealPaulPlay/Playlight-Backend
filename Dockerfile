@@ -1,5 +1,5 @@
 # Environment Image
-FROM node:20
+FROM node:20-alpine
 
 # Create app directory
 WORKDIR /usr/src/app
