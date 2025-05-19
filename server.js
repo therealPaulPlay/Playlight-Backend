@@ -23,7 +23,7 @@ const defaultCors = cors({
     origin: (origin, callback) => {
         // Bypass cors for all localhost origins
         if (!origin || origin.includes('localhost')) {
-            callback(null, true);
+            callback(null, origin || 'http://localhost');
             return;
         }
 
