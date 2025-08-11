@@ -1,7 +1,6 @@
 const express = require('express');
 const requestIp = require('request-ip');
 const cors = require('cors');
-const xss = require('xss-clean');
 const { createRouteHandler } = require("uploadthing/express");
 require('dotenv').config(); // Load environment variables
 
@@ -50,7 +49,6 @@ const platformCors = cors({
 // Middleware
 app.use(express.json()); // Parse the body as json for all routes
 app.use(requestIp.mw());
-app.use(xss());
 
 // Database Connection
 connectDB();
