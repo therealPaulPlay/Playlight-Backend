@@ -379,7 +379,7 @@ platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res)
             message: action === 'like' ? 'Game liked successfully.' : 'Like removed successfully.'
         });
     } catch (error) {
-        console.error(`Error ${action} game:`, error);
+        console.error(`Failed to ${action} game:`, error);
         res.status(500).json({ error: `Failed to ${action} game.` });
     }
 });

@@ -29,17 +29,17 @@ jobs:
             git pull
 
             # Build Docker image
-            docker build -t playlightbackend .
+            docker build -t playlight-backend .
 
-            # Check if container playlightbackend exists
-            if ! docker ps -a --format '{{.Names}}' | grep -q "^playlightbackend$"; then
-              echo "Container playlightbackend does not exist, creating..."
-              docker run -d -p 3009:3009 --network host --restart unless-stopped --name playlightbackend --env-file .env playlightbackend
+            # Check if container playlight-backend exists
+            if ! docker ps -a --format '{{.Names}}' | grep -q "^playlight-backend$"; then
+              echo "Container playlight-backend does not exist, creating..."
+              docker run -d -p 3009:3009 --network host --restart unless-stopped --name playlight-backend --env-file .env playlight-backend
             else
-              echo "Container playlightbackend exists, stopping and removing..."
-              docker stop playlightbackend || true
-              docker rm playlightbackend || true
-              docker run -d -p 3009:3009 --network host --restart unless-stopped --name playlightbackend --env-file .env playlightbackend
+              echo "Container playlight-backend exists, stopping and removing..."
+              docker stop playlight-backend || true
+              docker rm playlight-backend || true
+              docker run -d -p 3009:3009 --network host --restart unless-stopped --name playlight-backend --env-file .env playlight-backend
             fi
           EOF
 
