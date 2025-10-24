@@ -1,11 +1,11 @@
-// adminRouter.js
-const express = require('express');
+import express from 'express';
+import { standardLimiter } from "./rateLimiting.js";
+import { authenticateTokenWithId } from "./authUtils.js";
+import { getDB } from "./connectDB.js";
+import { whitelist, users, statistics } from './schema.js';
+import { eq, sql, gte } from 'drizzle-orm';
+
 const adminRouter = express.Router();
-const { standardLimiter } = require("./rateLimiting.js");
-const { authenticateTokenWithId } = require("./authUtils.js");
-const { getDB } = require("./connectDB.js");
-const { whitelist, users, statistics } = require('./schema');
-const { eq, like, and, sql, gte } = require('drizzle-orm');
 
 // Middleware to check if user is admin
 const isAdmin = async (req, res, next) => {
@@ -125,4 +125,4 @@ adminRouter.get('/total-statistics', standardLimiter, async (req, res) => {
     }
 });
 
-module.exports = adminRouter;
+export default adminRouter;

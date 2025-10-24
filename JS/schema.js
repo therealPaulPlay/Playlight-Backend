@@ -1,7 +1,6 @@
-// schema.js
-const { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey } = require('drizzle-orm/mysql-core');
+import { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey } from 'drizzle-orm/mysql-core';
 
-const users = mysqlTable('users', {
+export const users = mysqlTable('users', {
     id: serial().primaryKey(),
     user_name: varchar('user_name', { length: 50 }).notNull(),
     email: varchar('email', { length: 100 }).notNull(),
@@ -12,7 +11,7 @@ const users = mysqlTable('users', {
     uniqueIndex('email_idx').on(table.email),
 ]);
 
-const whitelist = mysqlTable('whitelist', {
+export const whitelist = mysqlTable('whitelist', {
     id: serial().primaryKey(),
     email: varchar('email', { length: 100 }).notNull(),
     created_at: timestamp().notNull(),
@@ -20,7 +19,7 @@ const whitelist = mysqlTable('whitelist', {
     uniqueIndex('email_idx').on(table.email)
 ]);
 
-const games = mysqlTable('games', {
+export const games = mysqlTable('games', {
     id: serial().primaryKey(),
     name: varchar('name', { length: 100 }).notNull(),
     owner_id: int().notNull(),
@@ -48,7 +47,7 @@ const games = mysqlTable('games', {
     }).onDelete('set null')
 ]);
 
-const statistics = mysqlTable('statistics', {
+export const statistics = mysqlTable('statistics', {
     id: serial().primaryKey(),
     game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp().notNull(),
@@ -61,7 +60,7 @@ const statistics = mysqlTable('statistics', {
     index('game_id_date_idx').on(table.game_id, table.date),
 ]);
 
-const likes = mysqlTable('likes', {
+export const likes = mysqlTable('likes', {
     id: serial().primaryKey(),
     game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp().notNull(),
@@ -71,4 +70,3 @@ const likes = mysqlTable('likes', {
     uniqueIndex('game_id_ip_idx').on(table.game_id, table.ip),
 ]);
 
-module.exports = { users, whitelist, games, statistics, likes };

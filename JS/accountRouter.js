@@ -1,15 +1,13 @@
-// accountRouter.js
-const express = require('express');
-const accountRouter = express.Router();
-const jwt = require('jsonwebtoken');
-const { standardLimiter, registerLimiter, loginLimiter } = require("./rateLimiting.js");
-const { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId } = require("./authUtils.js");
-const { getDB } = require("./connectDB.js");
-const { sendMail } = require('./sendEmails.js');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import { standardLimiter, registerLimiter, loginLimiter } from "./rateLimiting.js";
+import { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId } from "./authUtils.js";
+import { getDB } from "./connectDB.js";
+import { sendMail } from './sendEmails.js';
+import { users, whitelist } from './schema.js';
+import { eq } from 'drizzle-orm';
 
-// Import the schema and the equality helper
-const { users, whitelist } = require('./schema');
-const { eq } = require('drizzle-orm');
+const accountRouter = express.Router();
 
 // Get user details
 accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -234,4 +232,4 @@ accountRouter.post('/reset-password', standardLimiter, async (req, res) => {
     }
 });
 
-module.exports = accountRouter;
+export default accountRouter;

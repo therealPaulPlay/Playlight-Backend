@@ -1,10 +1,11 @@
-const express = require('express');
+import express from 'express';
+import { standardLimiter, heavyLimiter } from "./rateLimiting.js";
+import { authenticateTokenWithId, isPasswordValid } from "./authUtils.js";
+import { getDB } from "./connectDB.js";
+import { games, statistics, users } from './schema.js';
+import { eq, and, gte, desc, or, like, asc, sql } from 'drizzle-orm';
+
 const gameRouter = express.Router();
-const { standardLimiter, heavyLimiter } = require("./rateLimiting.js");
-const { authenticateTokenWithId, isPasswordValid } = require("./authUtils.js");
-const { getDB } = require("./connectDB.js");
-const { games, statistics, users } = require('./schema');
-const { eq, and, gte, desc, or, like, asc, sql } = require('drizzle-orm');
 
 // Fetch games with pagination and search (id is the user id here)
 gameRouter.get('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -260,4 +261,4 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
     }
 });
 
-module.exports = gameRouter;
+export default gameRouter;

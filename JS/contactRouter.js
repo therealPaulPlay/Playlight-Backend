@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { heavyLimiter } from "./rateLimiting.js";
+import { sendMail } from './sendEmails.js';
+
 const contactRouter = express.Router();
-const { heavyLimiter } = require("./rateLimiting.js");
-const { sendMail } = require('./sendEmails.js');
 
 // Form submission endpoint
 contactRouter.post('/submit', heavyLimiter, async (req, res) => {
@@ -58,4 +59,4 @@ ${message}
     }
 });
 
-module.exports = contactRouter;
+export default contactRouter;

@@ -1,12 +1,13 @@
-const { createUploadthing, UploadThingError } = require("uploadthing/express");
-const jwt = require("jsonwebtoken");
-const { UTApi } = require("uploadthing/server");
-const { heavyLimiter, standardLimiter } = require("./rateLimiting.js");
-const express = require('express');
-const { authenticateTokenWithId } = require("./authUtils.js");
-const { users, games } = require("./schema.js");
-const { getDB } = require("./connectDB.js");
-const { eq, like, or } = require("drizzle-orm");
+import { createUploadthing } from "uploadthing/express";
+import jwt from "jsonwebtoken";
+import { UTApi, UploadThingError } from "uploadthing/server";
+import { heavyLimiter, standardLimiter } from "./rateLimiting.js";
+import express from 'express';
+import { authenticateTokenWithId } from "./authUtils.js";
+import { users, games } from "./schema.js";
+import { getDB } from "./connectDB.js";
+import { eq, like, or } from "drizzle-orm";
+
 const utapiRouter = express.Router();
 
 const f = createUploadthing();
@@ -190,4 +191,4 @@ utapiRouter.post('/cleanup-files', heavyLimiter, authenticateTokenWithId, async 
     }
 });
 
-module.exports = { uploadRouter, utapiRouter };
+export { uploadRouter, utapiRouter };

@@ -1,10 +1,10 @@
-// platformRouter.js
-const express = require('express');
+import express from 'express';
+import { heavyLimiter, standardLimiter, openLimiter } from "./rateLimiting.js";
+import { getDB } from "./connectDB.js";
+import { games, statistics, likes } from './schema.js';
+import { eq, and, sql, ne, lt, inArray, aliasedTable, isNotNull } from 'drizzle-orm';
+
 const platformRouter = express.Router();
-const { heavyLimiter, standardLimiter, openLimiter } = require("./rateLimiting.js");
-const { getDB } = require("./connectDB.js");
-const { games, statistics, likes } = require('./schema.js');
-const { eq, and, sql, ne, lt, inArray, aliasedTable, isNotNull } = require('drizzle-orm');
 
 // Get game suggestions with pagination and category filtering
 platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) => {
@@ -416,4 +416,4 @@ setInterval(async () => {
     }
 }, 60 * 60 * 1000); // 1 hour
 
-module.exports = platformRouter;
+export default platformRouter;

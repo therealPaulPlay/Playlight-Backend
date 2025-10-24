@@ -1,8 +1,8 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // Generate password hash for the registration
-async function getEncodedPassword(plainPassword) {
+export async function getEncodedPassword(plainPassword) {
     const saltRounds = 10;
     try {
         const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
@@ -14,7 +14,7 @@ async function getEncodedPassword(plainPassword) {
 }
 
 // Check password against hash for the login
-async function isPasswordValid(plainPassword, hashedPassword) {
+export async function isPasswordValid(plainPassword, hashedPassword) {
     try {
         if (!plainPassword) throw new Error("No password provided!");
         const isValid = await bcrypt.compare(plainPassword, hashedPassword);
@@ -25,7 +25,7 @@ async function isPasswordValid(plainPassword, hashedPassword) {
     }
 }
 
-function createNewJwtToken(user) {
+export function createNewJwtToken(user) {
     try {
         const accessToken = jwt.sign(
             {
@@ -39,29 +39,25 @@ function createNewJwtToken(user) {
         );
         console.info('JWT token generated successfully.');
         return accessToken;
+
     } catch (error) {
         console.error('Token generation error: ', error.message);
         return null;
     }
 }
 
-function authenticateTokenWithId(req, res, next) {
+export function authenticateTokenWithId(req, res, next) {
     const authorizationHeader = req.headers['authorization'];
 
     if (authorizationHeader && authorizationHeader.startsWith('Bearer ')) {
         const token = authorizationHeader.substring('Bearer '.length);
 
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-                return res.status(403).json({ status: 403, error: "Your authentication token is no longer valid. Please log in again." });
-            }
-
-            if (!decoded || !decoded.userId) {
-                return res.status(403).json({ status: 403, error: "Access token lacks user id." });
-            }
+            if (err) return res.status(403).json({ status: 403, error: "Your authentication token is no longer valid. Please log in again." });
+            if (!decoded || !decoded.userId) return res.status(403).json({ status: 403, error: "Access token lacks user id." });
 
             const tokenUserId = decoded.userId;
-            const requestUserId = req.body.id ? req.body.id : req.params.id; // get id from params or from body, depending on what exists !CHANGE this if you want to use /:id as a request parameter for different use cases
+            const requestUserId = req.body.id ? req.body.id : req.params.id; // Get id from params or from body, depending on what exists !CHANGE this if you want to use /:id as a request parameter for different use cases
 
             // Compare token userId with the requested userId
             if (tokenUserId != requestUserId) {
@@ -76,4 +72,3 @@ function authenticateTokenWithId(req, res, next) {
     }
 }
 
-module.exports = { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId };

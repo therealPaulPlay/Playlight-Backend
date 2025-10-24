@@ -1,19 +1,19 @@
-const express = require('express');
-const requestIp = require('request-ip');
-const cors = require('cors');
-const { createRouteHandler } = require("uploadthing/express");
-require('dotenv').config(); // Load environment variables
+import express from 'express';
+import requestIp from 'request-ip';
+import cors from 'cors';
+import { createRouteHandler } from "uploadthing/express";
+import 'dotenv/config';
 
 // Router Imports
-const accountRouter = require("./JS/accountRouter.js");
-const adminRouter = require("./JS/adminRouter.js");
-const gameRouter = require("./JS/gameRouter.js");
-const platformRouter = require("./JS/platformRouter.js");
-const contactRouter = require("./JS/contactRouter.js");
-const { uploadRouter, utapiRouter } = require("./JS/uploadRouter.js");
+import accountRouter from "./JS/accountRouter.js";
+import adminRouter from "./JS/adminRouter.js";
+import gameRouter from "./JS/gameRouter.js";
+import platformRouter from "./JS/platformRouter.js";
+import contactRouter from "./JS/contactRouter.js";
+import { uploadRouter, utapiRouter } from "./JS/uploadRouter.js";
 
 // Function imports
-const { connectDB } = require("./JS/connectDB.js");
+import { connectDB } from "./JS/connectDB.js";
 
 const app = express();
 
@@ -75,7 +75,7 @@ app.use("/health", defaultCors, (req, res) => {
     res.status(200).json({ message: 'Server is healthy.' });
 });
 
-// Start the server ----------------------------------------------------------------------------------------------------------------------------------
+// Start the server
 app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
 });

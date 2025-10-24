@@ -1,8 +1,8 @@
-const axios = require('axios');
-const { randomUUID } = require('crypto');
+import axios from 'axios';
+import { randomUUID } from 'crypto';
 
 // Validate captcha with Cloudflare Turnstile
-const validateCaptcha = async (req, res, next) => {
+export default async function validateCaptcha(req, res, next) {
     const turnstileToken = req.headers['cf-turnstile-response'];
     if (!turnstileToken) return res.status(400).json({ error: "Turnstile token missing." });
 
@@ -25,6 +25,4 @@ const validateCaptcha = async (req, res, next) => {
         console.error("Error during Turnstile Captcha validation: ", err);
         return res.status(500).json({ error: 'Error validating Captcha (Turnstile) token.' });
     }
-};
-
-module.exports = validateCaptcha;
+}
