@@ -28,13 +28,6 @@ export const heavyLimiter = rateLimit({
     message: { error: 'You are sending too many requests.' }
 });
 
-export const superHeavyLimiter = rateLimit({
-    windowMs: 30 * 60 * 1000,
-    keyGenerator: (req) => req.clientIp,
-    max: 2,
-    message: { error: 'You are sending too many requests.' }
-});
-
 export const openLimiter = rateLimit({
     windowMs: 10 * 60 * 1000,
     keyGenerator: (req) => req.clientIp,
