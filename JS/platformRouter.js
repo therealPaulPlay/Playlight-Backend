@@ -37,22 +37,20 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
         const statsResults = await db.select({
             game_id: statistics.game_id,
             clicks: sql`SUM(${statistics.clicks})`.as('clicks'),
-            referrals: sql`SUM(${statistics.referrals})`.as('referrals'),
-            opens: sql`SUM(${statistics.playlight_opens})`.as('opens')
+            referrals: sql`SUM(${statistics.referrals})`.as('referrals')
         }).from(statistics).where(inArray(statistics.game_id, gameIds)).groupBy(statistics.game_id);
 
         // Create stats map
         const statsMap = Object.fromEntries(statsResults.map(s => [
             s.game_id, {
                 clicks: Number(s.clicks || 0),
-                referrals: Number(s.referrals || 0),
-                opens: Number(s.opens || 0)
+                referrals: Number(s.referrals || 0)
             }
         ]));
 
         // Calculate scores, sort and paginate
         const gamesWithScores = resultGames.map(game => {
-            const stats = statsMap[game.id] || { clicks: 0, referrals: 0, opens: 0 };
+            const stats = statsMap[game.id] || { clicks: 0, referrals: 0 };
 
             // Calculate age bonus directly (bonus for new games)
             const createdDate = new Date(game.created_at);
@@ -61,9 +59,8 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
 
             const clicksScore = stats.clicks * 2;
             const referralsScore = stats.referrals;
-            const opensScore = Math.round(stats.opens * 0.1);
             const likesScore = Number(game.likes) * 25;
-            const rankingScore = Math.round((clicksScore + referralsScore + opensScore + likesScore + ageBonus) * Number(game.boost_factor));
+            const rankingScore = Math.round((clicksScore + referralsScore + likesScore + ageBonus) * Number(game.boost_factor));
 
             return { ...game, ranking_score: rankingScore };
         }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
@@ -175,23 +172,6 @@ platformRouter.post('/event/open', openLimiter, async (req, res) => {
             return res.status(404).json({ error: 'Could not find game for this domain.' });
         }
 
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
-
-        // Insert or update statistics for today
-        await db
-            .insert(statistics)
-            .values({
-                game_id: gameResults[0].id,
-                date: today,
-                playlight_opens: 1,
-                clicks: 0,
-                referrals: 0
-            })
-            .onDuplicateKeyUpdate({
-                set: { playlight_opens: sql`${statistics.playlight_opens} + 1` }
-            });
-
         await trackEvent("open", gameResults[0].id, format);
         res.json({ success: true });
     } catch (error) {
@@ -236,7 +216,6 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
                 game_id: targetGameResults[0].id,
                 date: today,
                 clicks: 1,
-                playlight_opens: 0,
                 referrals: 0
             })
             .onDuplicateKeyUpdate({
@@ -250,7 +229,6 @@ platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
                 game_id: sourceGameResults[0].id,
                 date: today,
                 clicks: 0,
-                playlight_opens: 0,
                 referrals: 1
             })
             .onDuplicateKeyUpdate({

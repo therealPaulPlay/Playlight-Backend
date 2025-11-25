@@ -104,7 +104,6 @@ adminRouter.get('/total-statistics', standardLimiter, async (req, res) => {
             .select({
                 // Format to YYYY-MM
                 yearMonth: sql`DATE_FORMAT(${statistics.date}, '%Y-%m')`,
-                totalPlaylightOpens: sql`SUM(${statistics.playlight_opens})`,
                 totalReferrals: sql`SUM(${statistics.referrals})`
             })
             .from(statistics)

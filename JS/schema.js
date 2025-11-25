@@ -53,7 +53,6 @@ export const statistics = mysqlTable('statistics', {
     game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
     date: timestamp().notNull(),
     clicks: int().default(0).notNull(),
-    playlight_opens: int().default(0).notNull(),
     referrals: int().default(0).notNull(),
 }, (table) => [
     index('game_id_idx').on(table.game_id),
