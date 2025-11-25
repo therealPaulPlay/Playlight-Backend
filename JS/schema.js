@@ -1,4 +1,4 @@
-import { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey, tinyint } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey, tinyint, json } from 'drizzle-orm/mysql-core';
 
 export const users = mysqlTable('users', {
     id: serial().primaryKey(),
@@ -58,7 +58,21 @@ export const statistics = mysqlTable('statistics', {
 }, (table) => [
     index('game_id_idx').on(table.game_id),
     index('date_idx').on(table.date),
-    index('game_id_date_idx').on(table.game_id, table.date),
+    uniqueIndex('game_id_date_idx').on(table.game_id, table.date),
+]);
+
+export const events = mysqlTable('events', {
+    id: serial().primaryKey(),
+    game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
+    type: varchar('type', { length: 50 }).notNull(),
+    format: varchar('format', { length: 50 }),
+    metadata: json(),
+    created_at: timestamp().notNull(),
+}, (table) => [
+    index('game_id_idx').on(table.game_id),
+    index('type_idx').on(table.type),
+    index('created_at_idx').on(table.created_at),
+    index('game_id_type_format_idx').on(table.game_id, table.type, table.format),
 ]);
 
 export const likes = mysqlTable('likes', {

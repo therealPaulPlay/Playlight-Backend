@@ -57,6 +57,13 @@
       "when": 1764085169061,
       "tag": "0007_motionless_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1764107160519,
+      "tag": "0008_daily_ezekiel",
+      "breakpoints": true
     }
   ]
 }

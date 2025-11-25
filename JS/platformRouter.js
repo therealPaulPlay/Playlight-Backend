@@ -1,7 +1,7 @@
 import express from 'express';
 import { heavyLimiter, standardLimiter, openLimiter } from "./rateLimiting.js";
 import { getDB } from "./connectDB.js";
-import { games, statistics, likes } from './schema.js';
+import { games, statistics, likes, events } from './schema.js';
 import { eq, and, sql, ne, lt, inArray, aliasedTable, isNotNull } from 'drizzle-orm';
 
 const platformRouter = express.Router();
@@ -158,56 +158,41 @@ platformRouter.get('/categories', standardLimiter, async (req, res) => {
 // Record Playlight open event
 platformRouter.post('/event/open', openLimiter, async (req, res) => {
     const db = getDB();
-    const { domain } = req.body;
+    const { domain, format } = req.body;
 
     if (!domain) return res.status(400).json({ error: 'Domain is required.' });
+    if (format && typeof format !== "string") return res.status(400).json({ error: 'Format must be of type string.' });
 
     try {
         // Find the game by domain
-        const game = await db
+        const gameResults = await db
             .select({ id: games.id })
             .from(games)
             .where(eq(games.domain, domain))
             .limit(1);
 
-        if (game.length === 0) {
+        if (gameResults.length === 0) {
             return res.status(404).json({ error: 'Could not find game for this domain.' });
         }
 
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
 
-        // Update or create statistics for today
-        const existingStats = await db
-            .select()
-            .from(statistics)
-            .where(
-                and(
-                    eq(statistics.game_id, game[0].id),
-                    eq(statistics.date, today)
-                )
-            )
-            .limit(1);
+        // Insert or update statistics for today
+        await db
+            .insert(statistics)
+            .values({
+                game_id: gameResults[0].id,
+                date: today,
+                playlight_opens: 1,
+                clicks: 0,
+                referrals: 0
+            })
+            .onDuplicateKeyUpdate({
+                set: { playlight_opens: sql`${statistics.playlight_opens} + 1` }
+            });
 
-        if (existingStats.length > 0) {
-            await db
-                .update(statistics)
-                .set({
-                    playlight_opens: existingStats[0].playlight_opens + 1
-                })
-                .where(eq(statistics.id, existingStats[0].id));
-        } else {
-            await db
-                .insert(statistics)
-                .values({
-                    game_id: game[0].id,
-                    date: today,
-                    playlight_opens: 1,
-                    clicks: 0,
-                    referrals: 0
-                });
-        }
-
+        await trackEvent("open", gameResults[0].id, format);
         res.json({ success: true });
     } catch (error) {
         console.error('Error recording open event:', error);
@@ -218,101 +203,86 @@ platformRouter.post('/event/open', openLimiter, async (req, res) => {
 // Record game click event
 platformRouter.post('/event/click', heavyLimiter, async (req, res) => {
     const db = getDB();
-    const { gameId, sourceDomain } = req.body;
+    const { gameId, sourceDomain, format } = req.body;
 
-    if (!gameId || !sourceDomain) {
-        return res.status(400).json({ error: 'Game ID and source domain are required.' });
-    }
+    if (!gameId || !sourceDomain) return res.status(400).json({ error: 'Game ID and source domain are required.' });
+    if (format && typeof format !== "string") return res.status(400).json({ error: 'Format must be of type string.' });
 
     try {
         // Verify both games exist
-        const sourceGame = await db
+        const sourceGameResults = await db
             .select({ id: games.id })
             .from(games)
             .where(eq(games.domain, sourceDomain))
             .limit(1);
 
-        const targetGame = await db
+        const targetGameResults = await db
             .select({ id: games.id })
             .from(games)
             .where(eq(games.id, gameId))
             .limit(1);
 
-        if (sourceGame.length === 0 || targetGame.length === 0) {
+        if (sourceGameResults.length === 0 || targetGameResults.length === 0) {
             return res.status(404).json({ error: 'Invalid game reference.' });
         }
 
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
 
-        // Update or create statistics for today for the clicked game (target)
-        const existingTargetStats = await db
-            .select()
-            .from(statistics)
-            .where(
-                and(
-                    eq(statistics.game_id, gameId),
-                    eq(statistics.date, today)
-                )
-            )
-            .limit(1);
+        // Insert or update statistics for the clicked game (target)
+        await db
+            .insert(statistics)
+            .values({
+                game_id: targetGameResults[0].id,
+                date: today,
+                clicks: 1,
+                playlight_opens: 0,
+                referrals: 0
+            })
+            .onDuplicateKeyUpdate({
+                set: { clicks: sql`${statistics.clicks} + 1` }
+            });
 
-        if (existingTargetStats.length > 0) {
-            await db
-                .update(statistics)
-                .set({
-                    clicks: existingTargetStats[0].clicks + 1
-                })
-                .where(eq(statistics.id, existingTargetStats[0].id));
-        } else {
-            await db
-                .insert(statistics)
-                .values({
-                    game_id: gameId,
-                    date: today,
-                    clicks: 1,
-                    playlight_opens: 0,
-                    referrals: 0
-                });
-        }
+        // Insert or update statistics for the source game (tracking referrals)
+        await db
+            .insert(statistics)
+            .values({
+                game_id: sourceGameResults[0].id,
+                date: today,
+                clicks: 0,
+                playlight_opens: 0,
+                referrals: 1
+            })
+            .onDuplicateKeyUpdate({
+                set: { referrals: sql`${statistics.referrals} + 1` }
+            });
 
-        // Update or create statistics for the source game (tracking referrals)
-        const existingSourceStats = await db
-            .select()
-            .from(statistics)
-            .where(
-                and(
-                    eq(statistics.game_id, sourceGame[0].id),
-                    eq(statistics.date, today)
-                )
-            )
-            .limit(1);
-
-        if (existingSourceStats.length > 0) {
-            await db
-                .update(statistics)
-                .set({
-                    referrals: existingSourceStats[0].referrals + 1
-                })
-                .where(eq(statistics.id, existingSourceStats[0].id));
-        } else {
-            await db
-                .insert(statistics)
-                .values({
-                    game_id: sourceGame[0].id,
-                    date: today,
-                    clicks: 0,
-                    playlight_opens: 0,
-                    referrals: 1
-                });
-        }
-
+        await trackEvent("click", sourceGameResults[0].id, format, { targetId: targetGameResults[0].id });
         res.json({ success: true });
     } catch (error) {
         console.error('Error recording click event:', error);
         res.status(500).json({ error: 'Failed to record click event.' });
     }
 });
+
+async function trackEvent(type, gameId, format, metadata) {
+    const db = getDB();
+    const validFormats = ["custom", "discovery", "sidebar", "exit intent", "widget"];
+    if (format && !validFormats.includes(format)) throw new Error("Invalid format for event!");
+
+    try {
+        await db.insert(events).values({
+            game_id: gameId,
+            type,
+            format,
+            metadata,
+            created_at: new Date()
+        });
+    } catch (error) {
+        console.error('Error tracking event:', error);
+        throw error;
+    }
+}
 
 // Handle game ratings (likes/unlikes)
 platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res) => {
@@ -394,6 +364,13 @@ setInterval(async () => {
             .delete(statistics)
             .where(lt(statistics.date, sixMonthsAgo));
 
+        // Delete old events
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        await db
+            .delete(events)
+            .where(lt(events.created_at, sevenDaysAgo));
+
         // Check for expired featured games and remove their featured status
         const currentTime = new Date();
         await db
@@ -409,7 +386,7 @@ setInterval(async () => {
                 )
             );
 
-        console.log("Stats and featured games cleanup completed.");
+        console.log("Stats, events, and featured games cleanup completed.");
     } catch (error) {
         console.error('Error in scheduled cleanup task in platformRouter.js:', error);
     }

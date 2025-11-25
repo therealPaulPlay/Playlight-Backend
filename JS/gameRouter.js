@@ -2,7 +2,7 @@ import express from 'express';
 import { standardLimiter, heavyLimiter } from "./rateLimiting.js";
 import { authenticateTokenWithId, isPasswordValid } from "./authUtils.js";
 import { getDB } from "./connectDB.js";
-import { games, statistics, users } from './schema.js';
+import { games, statistics, users, events } from './schema.js';
 import { eq, and, gte, desc, or, like, asc, sql } from 'drizzle-orm';
 
 const gameRouter = express.Router();
@@ -275,6 +275,58 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
     } catch (error) {
         console.error('Error fetching statistics:', error);
         res.status(500).json({ error: 'Failed to fetch statistics.' });
+    }
+});
+
+// Get game events
+gameRouter.put('/:id/events', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const gameId = parseInt(req.params.id);
+    const { startDate, endDate, type, id: userId } = req.body;
+
+    if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'startDate and endDate are required.' });
+    }
+
+    try {
+        // Verify ownership or admin status
+        const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        // Set start to beginning of day and end to end of day
+        start.setUTCHours(0, 0, 0, 0);
+        end.setUTCHours(23, 59, 59, 999);
+
+        // Build query conditions
+        let conditions = [
+            eq(events.game_id, gameId),
+            gte(events.created_at, start),
+            gte(end, events.created_at)
+        ];
+        if (type) conditions.push(eq(events.type, type));
+
+        // Group events by type and format, and count occurrences (cumulated across the date range)
+        const eventStats = await db
+            .select({
+                type: events.type,
+                format: events.format,
+                count: sql`COUNT(*)`.as('count')
+            })
+            .from(events)
+            .where(and(...conditions))
+            .groupBy(events.type, events.format)
+            .orderBy(desc(sql`COUNT(*)`));
+
+        res.json(eventStats);
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        res.status(500).json({ error: 'Failed to fetch events.' });
     }
 });
 
