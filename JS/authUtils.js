@@ -54,15 +54,15 @@ export function authenticateTokenWithId(req, res, next) {
 
         jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) return res.status(403).json({ status: 403, error: "Your authentication token is no longer valid. Please log in again." });
-            if (!decoded || !decoded.userId) return res.status(403).json({ status: 403, error: "Access token lacks user id." });
+            if (!decoded || !decoded.userId) return res.status(403).json({ status: 403, error: "Access token lacks user ID." });
 
             const tokenUserId = decoded.userId;
-            const requestUserId = req.body.id ? req.body.id : req.params.id; // Get id from params or from body, depending on what exists !CHANGE this if you want to use /:id as a request parameter for different use cases
+            const requestUserId = req.body.id ? req.body.id : req.params.id; // Get ID from params or from body, depending on what exists
 
             // Compare token userId with the requested userId
             if (tokenUserId != requestUserId) {
-                console.error("User ID from access token does not match user id. Id from Token: " + tokenUserId + ", Id from request: " + requestUserId);
-                return res.status(403).json({ status: 403, error: "User ID from access token does not match requested user id." });
+                console.error("User ID from access token does not match user ID. ID from Token: " + tokenUserId + ", ID from request: " + requestUserId);
+                return res.status(403).json({ status: 403, error: "User ID from access token does not match requested user ID." });
             }
 
             next?.();

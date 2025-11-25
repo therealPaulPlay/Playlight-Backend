@@ -50,6 +50,13 @@
       "when": 1744738923492,
       "tag": "0006_jazzy_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1764085169061,
+      "tag": "0007_motionless_namorita",
+      "breakpoints": true
     }
   ]
 }

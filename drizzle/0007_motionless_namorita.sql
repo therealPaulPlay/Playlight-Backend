@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `paused` tinyint DEFAULT 0 NOT NULL;

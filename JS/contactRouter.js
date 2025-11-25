@@ -1,11 +1,11 @@
 import express from 'express';
-import { heavyLimiter } from "./rateLimiting.js";
+import { formLimiter } from "./rateLimiting.js";
 import { sendMail } from './sendEmails.js';
 
 const contactRouter = express.Router();
 
 // Form submission endpoint
-contactRouter.post('/submit', heavyLimiter, async (req, res) => {
+contactRouter.post('/submit', formLimiter, async (req, res) => {
     const { email, website, message } = req.body;
 
     // Validate required fields

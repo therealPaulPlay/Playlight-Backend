@@ -1,4 +1,4 @@
-import { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey } from 'drizzle-orm/mysql-core';
+import { mysqlTable, serial, varchar, timestamp, int, text, boolean, float, index, uniqueIndex, bigint, foreignKey, tinyint } from 'drizzle-orm/mysql-core';
 
 export const users = mysqlTable('users', {
     id: serial().primaryKey(),
@@ -32,6 +32,7 @@ export const games = mysqlTable('games', {
     boost_factor: float().default(1.0).notNull(),
     likes: int().default(0).notNull(),
     featured_game: bigint('featured_game', { unsigned: true, mode: 'number' }),
+    paused: tinyint().default(0).notNull(),
     feature_expires_at: timestamp(),
     created_at: timestamp().notNull(),
 }, (table) => [

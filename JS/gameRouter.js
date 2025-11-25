@@ -184,6 +184,34 @@ gameRouter.patch("/set-featured-game/:id", standardLimiter, authenticateTokenWit
     }
 });
 
+// Pause game
+gameRouter.patch('/set-paused/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const gameId = parseInt(req.params.id);
+    const { id: userId, isPaused } = req.body;
+
+    if (typeof isPaused !== 'boolean') return res.status(400).json({ error: 'isPaused must be a boolean.' });
+
+    try {
+        // Check ownership or admin status
+        const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
+
+        // Update game paused status
+        await db.update(games)
+            .set({ paused: Number(isPaused) })
+            .where(eq(games.id, gameId));
+
+        res.json({ message: 'Game paused status updated successfully.', isPaused });
+    } catch (error) {
+        console.error('Error updating game paused status:', error);
+        res.status(500).json({ error: 'Failed to update game paused status.' });
+    }
+});
+
 // Delete game
 gameRouter.delete('/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
@@ -195,19 +223,12 @@ gameRouter.delete('/:id', standardLimiter, authenticateTokenWithId, async (req, 
         const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
-        if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found.' });
-        }
-
-        if (!user[0].is_admin && game[0].owner_id != userId) {
-            return res.status(403).json({ error: 'Unauthorized.' });
-        }
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
 
         // Verify password
         const isValidPassword = await isPasswordValid(password, user[0].password);
-        if (!isValidPassword) {
-            return res.status(403).json({ error: 'Invalid password.' });
-        }
+        if (!isValidPassword) return res.status(403).json({ error: 'Invalid password.' });
 
         // Delete game and its statistics
         await db.delete(statistics).where(eq(statistics.game_id, gameId));
@@ -230,12 +251,8 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
         const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
 
-        if (!game[0]) {
-            return res.status(404).json({ error: 'Game not found.' });
-        }
-        if (!user[0].is_admin && game[0].owner_id != userId) {
-            return res.status(403).json({ error: 'Unauthorized.' });
-        }
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
 
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days || 7));

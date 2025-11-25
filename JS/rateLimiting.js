@@ -22,16 +22,23 @@ export const standardLimiter = rateLimit({
 });
 
 export const heavyLimiter = rateLimit({
-    windowMs: 1000,
+    windowMs: 5 * 1000,
     keyGenerator: (req) => req.clientIp,
-    max: 1,
+    max: 3,
     message: { error: 'You are sending too many requests.' }
 });
 
-export const openLimiter = rateLimit({
-    windowMs: 10 * 60 * 1000,
+export const formLimiter = rateLimit({
+    windowMs: 30 * 60 * 1000,
     keyGenerator: (req) => req.clientIp,
-    max: 1,
-    message: { error: 'Not more than 1 open event per 10 minutes per user is counted.' }
+    max: 3,
+    message: { error: 'Too many form submissions, please try again after 30 minutes.' }
+});
+
+export const openLimiter = rateLimit({
+    windowMs: 30 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 3,
+    message: { error: 'Too many open events, event will not be counted.' }
 });
 

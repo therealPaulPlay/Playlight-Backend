@@ -25,9 +25,10 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
         }).from(games);
 
         // Apply filters
-        if (category && without) query = query.where(and(eq(games.category, category), ne(games.domain, without)));
-        else if (category) query = query.where(eq(games.category, category));
-        else if (without) query = query.where(ne(games.domain, without));
+        const conditions = [eq(games.paused, 0)];
+        if (category) conditions.push(eq(games.category, category));
+        if (without) conditions.push(ne(games.domain, without));
+        query = query.where(and(...conditions));
 
         const resultGames = await query; // Get games from db
 
@@ -159,9 +160,7 @@ platformRouter.post('/event/open', openLimiter, async (req, res) => {
     const db = getDB();
     const { domain } = req.body;
 
-    if (!domain) {
-        return res.status(400).json({ error: 'Domain is required.' });
-    }
+    if (!domain) return res.status(400).json({ error: 'Domain is required.' });
 
     try {
         // Find the game by domain
