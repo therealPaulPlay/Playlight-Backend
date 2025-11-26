@@ -254,24 +254,30 @@ gameRouter.put('/:id/statistics', standardLimiter, authenticateTokenWithId, asyn
         if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
         if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
 
+        const numDays = parseInt(days || 7);
         const startDate = new Date();
-        startDate.setDate(startDate.getDate() - parseInt(days || 7));
+        startDate.setDate(startDate.getDate() - (numDays - 1));
+        startDate.setUTCHours(0, 0, 0, 0);
+
         const stats = await db.select({
-            // This uses SQL's DATE() function to format the date without the time
             date: sql`DATE(${statistics.date})`,
             playersGained: statistics.clicks,
             gamesReferred: statistics.referrals
         })
             .from(statistics)
-            .where(
-                and(
-                    eq(statistics.game_id, gameId),
-                    gte(statistics.date, startDate)
-                )
-            )
+            .where(and(eq(statistics.game_id, gameId), gte(statistics.date, startDate)))
             .orderBy(asc(statistics.date));
 
-        res.json(stats);
+        // Fill in missing dates with zeros
+        const statsMap = Object.fromEntries(stats.map(s => [s.date, s]));
+        const result = Array.from({ length: numDays }, (_, i) => {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            return statsMap[dateStr] || { date: dateStr, playersGained: 0, gamesReferred: 0 };
+        });
+
+        res.json(result);
     } catch (error) {
         console.error('Error fetching statistics:', error);
         res.status(500).json({ error: 'Failed to fetch statistics.' });
@@ -327,6 +333,73 @@ gameRouter.put('/:id/events', standardLimiter, authenticateTokenWithId, async (r
     } catch (error) {
         console.error('Error fetching events:', error);
         res.status(500).json({ error: 'Failed to fetch events.' });
+    }
+});
+
+// Get player flow (referral relationships) for a game from events
+gameRouter.put('/:id/events/player-flow', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const gameId = parseInt(req.params.id);
+    const { startDate, endDate, id: userId } = req.body;
+
+    if (!startDate || !endDate) return res.status(400).json({ error: 'startDate and endDate are required.' });
+
+    try {
+        // Verify ownership or admin status
+        const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+        const game = await db.select().from(games).where(eq(games.id, gameId)).limit(1);
+
+        if (!game[0]) return res.status(404).json({ error: 'Game not found.' });
+        if (!user[0].is_admin && game[0].owner_id != userId) return res.status(403).json({ error: 'Unauthorized.' });
+
+        const start = new Date(startDate);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        end.setUTCHours(23, 59, 59, 999);
+
+        const dateConditions = [
+            eq(events.type, 'click'),
+            gte(events.created_at, start),
+            gte(end, events.created_at)
+        ];
+
+        // Games that referred players TO this game
+        const gainedFrom = await db
+            .select({
+                id: games.id,
+                name: games.name,
+                domain: games.domain,
+                logo_url: games.logo_url,
+                count: sql`COUNT(*)`.as('count')
+            })
+            .from(events)
+            .innerJoin(games, eq(events.game_id, games.id))
+            .where(and(...dateConditions, sql`JSON_EXTRACT(${events.metadata}, '$.targetId') = ${gameId}`))
+            .groupBy(games.id)
+            .orderBy(desc(sql`COUNT(*)`));
+
+        // Games that this game referred players TO
+        const referredTo = await db
+            .select({
+                id: games.id,
+                name: games.name,
+                domain: games.domain,
+                logo_url: games.logo_url,
+                count: sql`COUNT(*)`.as('count')
+            })
+            .from(events)
+            .innerJoin(games, sql`${games.id} = JSON_EXTRACT(${events.metadata}, '$.targetId')`)
+            .where(and(...dateConditions, eq(events.game_id, gameId)))
+            .groupBy(games.id)
+            .orderBy(desc(sql`COUNT(*)`));
+
+        res.json({
+            gainedFrom: gainedFrom.map(g => ({ ...g, count: Number(g.count) })),
+            referredTo: referredTo.map(g => ({ ...g, count: Number(g.count) }))
+        });
+    } catch (error) {
+        console.error('Error fetching player flow:', error);
+        res.status(500).json({ error: 'Failed to fetch player flow.' });
     }
 });
 

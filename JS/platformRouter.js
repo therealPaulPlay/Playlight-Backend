@@ -21,7 +21,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             logo_url: games.logo_url, cover_image_url: games.cover_image_url,
             cover_video_url: games.cover_video_url, domain: games.domain,
             created_at: games.created_at, category: games.category,
-            likes: games.likes, boost_factor: games.boost_factor
+            likes: games.likes
         }).from(games);
 
         // Apply filters
@@ -60,7 +60,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             const clicksScore = stats.clicks * 2;
             const referralsScore = stats.referrals;
             const likesScore = Number(game.likes) * 25;
-            const rankingScore = Math.round((clicksScore + referralsScore + likesScore + ageBonus) * Number(game.boost_factor));
+            const rankingScore = Math.round(clicksScore + referralsScore + likesScore + ageBonus);
 
             return { ...game, ranking_score: rankingScore };
         }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
