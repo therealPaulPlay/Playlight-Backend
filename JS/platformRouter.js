@@ -57,10 +57,11 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (24 * 60 * 60 * 1000));
             const ageBonus = daysSinceCreation < 30 ? (30 - daysSinceCreation) * 5000 : 0;
 
-            const clicksScore = stats.clicks * 2;
+            const clicksScore = stats.clicks;
             const referralsScore = stats.referrals;
-            const likesScore = Number(game.likes) * 25;
-            const rankingScore = Math.round(clicksScore + referralsScore + likesScore + ageBonus);
+            const poorRatioPenalty = (stats.clicks - stats.referrals) * 0.5; // Games that gain much more players than they refer get penalized
+            const likesScore = Number(game.likes) * 20;
+            const rankingScore = Math.max(0, Math.round(clicksScore + referralsScore + likesScore + ageBonus - poorRatioPenalty));
 
             return { ...game, ranking_score: rankingScore };
         }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
