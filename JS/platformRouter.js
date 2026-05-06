@@ -336,11 +336,11 @@ setInterval(async () => {
     const db = getDB();
     try {
         // Delete old statistics records
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
         await db
             .delete(statistics)
-            .where(lt(statistics.date, sixMonthsAgo));
+            .where(lt(statistics.date, threeMonthsAgo));
 
         // Delete old events
         const sevenDaysAgo = new Date();
