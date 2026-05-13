@@ -55,11 +55,12 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             // Calculate age bonus directly (bonus for new games)
             const createdDate = new Date(game.created_at);
             const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (24 * 60 * 60 * 1000));
-            const ageBonus = daysSinceCreation < 30 ? (30 - daysSinceCreation) * 5000 : 0;
+            const ageBonus = daysSinceCreation < 30 ? (30 - daysSinceCreation) * 4000 : 0;
 
-            const clicksScore = stats.clicks;
             const referralsScore = stats.referrals;
-            const poorRatioPenalty = (stats.clicks - stats.referrals) * 0.5; // Games that gain much more players than they refer get penalized
+            const clicksScore = stats.clicks;
+            // Penalize games that gain more players than they refer, no bonus for the inverse
+            const poorRatioPenalty = Math.max(0, stats.clicks - stats.referrals) * 2;
             const likesScore = Number(game.likes) * 20;
             const rankingScore = Math.max(0, Math.round(clicksScore + referralsScore + likesScore + ageBonus - poorRatioPenalty));
 

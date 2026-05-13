@@ -93,11 +93,11 @@ adminRouter.get('/total-statistics', standardLimiter, async (req, res) => {
             return res.json(totalStatsCache.data);
         }
 
-        // Get date 6 months ago from today
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // -5 to include current month (total of 6)
-        sixMonthsAgo.setDate(1); // First day of that month
-        sixMonthsAgo.setHours(0, 0, 0, 0); // Start of day
+        // Get date 3 months ago from today
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 2); // -2 to include current month (total of 3)
+        threeMonthsAgo.setDate(1); // First day of that month
+        threeMonthsAgo.setHours(0, 0, 0, 0); // Start of day
 
         // Query to get monthly aggregated statistics
         const monthlyStats = await db
@@ -108,7 +108,7 @@ adminRouter.get('/total-statistics', standardLimiter, async (req, res) => {
             })
             .from(statistics)
             .where(
-                gte(statistics.date, sixMonthsAgo)
+                gte(statistics.date, threeMonthsAgo)
             )
             .groupBy(sql`DATE_FORMAT(${statistics.date}, '%Y-%m')`)
             .orderBy(sql`DATE_FORMAT(${statistics.date}, '%Y-%m') DESC`);
