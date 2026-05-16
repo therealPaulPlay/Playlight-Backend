@@ -1,7 +1,7 @@
 import express from 'express';
 import { heavyLimiter, standardLimiter, openLimiter } from "./rateLimiting.js";
 import { getDB } from "./connectDB.js";
-import { games, statistics, likes, events } from './schema.js';
+import { games, statistics, events } from './schema.js';
 import { eq, and, sql, ne, lt, inArray, aliasedTable, isNotNull } from 'drizzle-orm';
 
 const platformRouter = express.Router();
@@ -21,7 +21,6 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             logo_url: games.logo_url, cover_image_url: games.cover_image_url,
             cover_video_url: games.cover_video_url, domain: games.domain,
             created_at: games.created_at, category: games.category,
-            likes: games.likes
         }).from(games);
 
         // Apply filters
@@ -61,8 +60,7 @@ platformRouter.get('/suggestions/:category?', standardLimiter, async (req, res) 
             const clicksScore = stats.clicks;
             // Penalize games that gain more players than they refer, no bonus for the inverse
             const poorRatioPenalty = Math.max(0, stats.clicks - stats.referrals) * 2;
-            const likesScore = Number(game.likes) * 20;
-            const rankingScore = Math.max(0, Math.round(clicksScore + referralsScore + likesScore + ageBonus - poorRatioPenalty));
+            const rankingScore = Math.max(0, Math.round(clicksScore + referralsScore + ageBonus - poorRatioPenalty));
 
             return { ...game, ranking_score: rankingScore };
         }).sort((a, b) => b.ranking_score - a.ranking_score).slice(offset, offset + pageSize);
@@ -90,7 +88,6 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
                 category: games.category,
                 description: games.description,
                 logo_url: games.logo_url,
-                likes: games.likes,
                 featured_game: {
                     id: featuredGameTable.id,
                     name: featuredGameTable.name,
@@ -101,7 +98,6 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
                     domain: featuredGameTable.domain,
                     created_at: featuredGameTable.created_at,
                     category: featuredGameTable.category,
-                    likes: featuredGameTable.likes
                 }
             })
             .from(games)
@@ -118,39 +114,6 @@ platformRouter.get('/game-by-domain/:domain', standardLimiter, async (req, res) 
     } catch (error) {
         console.error('Error fetching game by domain:', error);
         res.status(500).json({ error: 'Failed to fetch game details.' });
-    }
-});
-
-// Get available categories with caching
-let categoriesCache = {
-    data: null,
-    lastFetched: 0
-};
-
-platformRouter.get('/categories', standardLimiter, async (req, res) => {
-    const db = getDB();
-    try {
-        const currentTime = Date.now();
-
-        // Check if cache is valid
-        if (categoriesCache.data && (currentTime - categoriesCache.lastFetched) < 10000) { // 10s
-            return res.json(categoriesCache.data);
-        }
-
-        // Cache expired or doesn't exist, fetch fresh data
-        const categories = await db
-            .select({ category: games.category })
-            .from(games)
-            .groupBy(games.category);
-
-        // Update cache
-        categoriesCache.data = categories.map(c => c.category);
-        categoriesCache.lastFetched = currentTime;
-
-        res.json(categoriesCache.data);
-    } catch (error) {
-        console.error('Error fetching categories:', error);
-        res.status(500).json({ error: 'Failed to fetch categories.' });
     }
 });
 
@@ -263,75 +226,6 @@ async function trackEvent(type, gameId, format, metadata) {
         throw error;
     }
 }
-
-// Handle game ratings (likes/unlikes)
-platformRouter.post('/rating/:gameId/:action', standardLimiter, async (req, res) => {
-    const db = getDB();
-    const { gameId, action } = req.params;
-    const clientIp = req.clientIp;
-
-    if (!gameId || !clientIp || !['like', 'unlike'].includes(action)) {
-        return res.status(400).json({ error: 'Valid game ID, client IP, and action (like/unlike) are required.' });
-    }
-
-    try {
-        const existingLike = await db
-            .select({ id: likes.id })
-            .from(likes)
-            .where(
-                and(
-                    eq(likes.game_id, gameId),
-                    eq(likes.ip, clientIp)
-                )
-            )
-            .limit(1);
-
-        const hasLiked = existingLike.length > 0;
-
-        if (action === 'like' && hasLiked) return res.status(409).json({ error: 'You have already liked this game.' });
-        if (action === 'unlike' && !hasLiked) return res.status(400).json({ error: 'You have not liked this game yet.' });
-
-        await db.transaction(async (tx) => {
-            if (action === 'like') {
-                // Add like
-                await tx
-                    .insert(likes)
-                    .values({
-                        game_id: gameId,
-                        date: new Date(),
-                        ip: clientIp
-                    });
-
-                await tx
-                    .update(games)
-                    .set({
-                        likes: sql`${games.likes} + 1`
-                    })
-                    .where(eq(games.id, gameId));
-            } else {
-                // Remove like
-                await tx
-                    .delete(likes)
-                    .where(eq(likes.id, existingLike[0].id));
-
-                await tx
-                    .update(games)
-                    .set({
-                        likes: sql`GREATEST(${games.likes} - 1, 0)`
-                    })
-                    .where(eq(games.id, gameId));
-            }
-        });
-
-        res.json({
-            success: true,
-            message: action === 'like' ? 'Game liked successfully.' : 'Like removed successfully.'
-        });
-    } catch (error) {
-        console.error(`Failed to ${action} game:`, error);
-        res.status(500).json({ error: `Failed to ${action} game.` });
-    }
-});
 
 // Run every hour
 setInterval(async () => {

@@ -29,7 +29,6 @@ export const games = mysqlTable('games', {
     cover_image_url: varchar('cover_image_url', { length: 255 }),
     cover_video_url: varchar('cover_video_url', { length: 255 }),
     domain: varchar('domain', { length: 255 }).notNull(),
-    likes: int().default(0).notNull(),
     featured_game: bigint('featured_game', { unsigned: true, mode: 'number' }),
     paused: tinyint().default(0).notNull(),
     feature_expires_at: timestamp(),
@@ -71,15 +70,5 @@ export const events = mysqlTable('events', {
     index('type_idx').on(table.type),
     index('created_at_idx').on(table.created_at),
     index('game_id_type_format_idx').on(table.game_id, table.type, table.format),
-]);
-
-export const likes = mysqlTable('likes', {
-    id: serial().primaryKey(),
-    game_id: bigint('game_id', { unsigned: true }).references(() => games.id, { onDelete: 'cascade' }).notNull(),
-    date: timestamp().notNull(),
-    ip: varchar('ip', { length: 255 }),
-}, (table) => [
-    index('game_id_idx').on(table.game_id),
-    uniqueIndex('game_id_ip_idx').on(table.game_id, table.ip),
 ]);
 
