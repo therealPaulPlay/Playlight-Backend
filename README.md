@@ -44,10 +44,6 @@ Routes that require admin permissions. This includes whitelist management.
 
 Authentication functions for decoding and verifying the JWT token and hashing the password.
 
-### `/JS/captchaMiddleware.js`
-
-Cloudflare captcha utility.
-
 ### `/JS/connectDB.js`
 
 Creates the MySQL connection pool and connects to it using drizzle.
@@ -67,10 +63,6 @@ Public routes (no CORS restrictions) related to the SDK. It handles e.g. fetchin
 ### `/JS/rateLimiting.js`
 
 Rate-limiting middleware functions using the `express-rate-limit` and `request-ip` packages.
-
-### `/JS/schema.js`
-
-Drizzle database schema.
 
 ### `/JS/sendEmails.js`
 
